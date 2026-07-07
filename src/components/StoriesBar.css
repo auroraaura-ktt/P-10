@@ -1,0 +1,53 @@
+.stories-bar {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  overflow-x: auto;
+
+  background: var(--white);
+  border-radius: 14px;
+
+  border: 1px solid var(--gray);
+  margin-bottom: 16px;
+}
+
+/* story card */
+.story {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 65px;
+  cursor: pointer;
+}
+
+/* avatar ring (MiitVerse style) */
+.story-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+
+  background: var(--navy);
+  color: var(--yellow);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+
+  border: 2px solid var(--yellow);
+  box-shadow: 0 0 0 2px var(--navy-light);
+  transition: 0.2s ease;
+}
+
+.story:hover .story-avatar {
+  transform: scale(1.08);
+  background: var(--navy-light);
+}
+
+/* name text */
+.story span {
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--navy);
+}
