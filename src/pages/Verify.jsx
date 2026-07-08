@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../lib/api'
@@ -38,6 +38,7 @@ function getDeadlineMs(value) {
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
+
 function formatCountdown(totalMs) {
   const totalSeconds = Math.max(Math.ceil(totalMs / 1000), 0)
   const minutes = Math.floor(totalSeconds / 60)
@@ -56,13 +57,80 @@ export default function Verify() {
   const initialResendDeadlineMs = getDeadlineMs(initialResendAvailableAt) || (initialEmail ? Date.now() + RESEND_COOLDOWN_MS : 0)
 
   const [email, setEmail] = useState(initialEmail)
-  const [code, setCode] = useState('')
+  const [codeDigits, setCodeDigits] = useState(Array(8).fill(''))
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [info, setInfo] = useState('')
   const [resendDeadlineMs, setResendDeadlineMs] = useState(initialResendDeadlineMs)
   const [remainingMs, setRemainingMs] = useState(() => Math.max(initialResendDeadlineMs - Date.now(), 0))
   const [resendLoading, setResendLoading] = useState(false)
+  const inputRefs = useRef([])
+
+  const codeValue = codeDigits.join('')
+  const isCodeComplete = codeDigits.every((digit) => digit !== '')
+
+  const focusOtpInput = (index) => {
+    const input = inputRefs.current[index]
+    if (input) {
+      input.focus()
+    }
+  }
+
+  const handleOtpChange = (index, event) => {
+    const entered = event.target.value.replace(/\D/g, '').slice(-1)
+    const values = [...codeDigits]
+
+    values[index] = entered
+    setCodeDigits(values)
+
+    if (entered && index < values.length - 1) {
+      focusOtpInput(index + 1)
+    }
+  }
+
+  const handleOtpKeyDown = (index, event) => {
+    if (event.key === 'Backspace') {
+      event.preventDefault()
+      const values = [...codeDigits]
+
+      if (values[index]) {
+        values[index] = ''
+        setCodeDigits(values)
+        return
+      }
+
+      if (index > 0) {
+        values[index - 1] = ''
+        setCodeDigits(values)
+        focusOtpInput(index - 1)
+      }
+    }
+
+    if (event.key === 'ArrowLeft' && index > 0) {
+      event.preventDefault()
+      focusOtpInput(index - 1)
+    }
+
+    if (event.key === 'ArrowRight' && index < codeDigits.length - 1) {
+      event.preventDefault()
+      focusOtpInput(index + 1)
+    }
+  }
+
+  const handleOtpPaste = (index, event) => {
+    event.preventDefault()
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '')
+    if (!pasted) return
+
+    const values = [...codeDigits]
+    for (let i = 0; i < pasted.length && index + i < values.length; i += 1) {
+      values[index + i] = pasted[i]
+    }
+
+    setCodeDigits(values)
+    const nextIndex = Math.min(values.length - 1, index + pasted.length)
+    focusOtpInput(nextIndex)
+  }
 
   useEffect(() => {
     if (!initialEmail) return
@@ -105,7 +173,7 @@ export default function Verify() {
     setInfo('')
     setLoading(true)
 
-    if (!/^\d{8}$/.test(code)) {
+    if (!/^\d{8}$/.test(codeValue)) {
       setError('Verification code must be 8 digits')
       setLoading(false)
       return
@@ -115,7 +183,7 @@ export default function Verify() {
       setInfo('Verifying your email...')
       await apiRequest('/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code: codeValue }),
       })
 
       clearPendingVerification()
@@ -192,21 +260,31 @@ export default function Verify() {
 
             <div className="input-group">
               <label>Verification Code (8 digits)</label>
-              <input
-                type="text"
-                placeholder="00000000"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                maxLength="8"
-                required
-                disabled={loading || resendLoading}
-              />
+              <div className="otp-inputs">
+                {codeDigits.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { inputRefs.current[index] = el }}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="1"
+                    className="otp-box"
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    onPaste={(e) => handleOtpPaste(index, e)}
+                    disabled={loading || resendLoading}
+                    aria-label={`Verification digit ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
 
             {error && <p style={{ color: '#ff6b6b', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
             {info && <p style={{ color: '#64ffda', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{info}</p>}
 
-            <button type="submit" className="auth-btn" disabled={loading || code.length !== 8}>
+            <button type="submit" className="auth-btn" disabled={loading || !isCodeComplete}>
               {loading ? 'Verifying...' : 'Verify & Create Account'}
             </button>
           </form>

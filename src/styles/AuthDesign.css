@@ -132,6 +132,33 @@ html, body, #root {
   cursor: not-allowed;
 }
 
+.otp-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.otp-box {
+  width: 42px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 255, 218, 0.25);
+  background: rgba(10, 25, 47, 0.85);
+  color: #f8fbff;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.25s ease;
+}
+
+.otp-box:focus {
+  outline: none;
+  border-color: #64ffda;
+  box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.18);
+  transform: translateY(-2px);
+}
+
 .auth-btn {
   width: 100%;
   padding: 13px;
