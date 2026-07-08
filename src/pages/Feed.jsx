@@ -1,11 +1,24 @@
 import StoriesBar from "../components/StoriesBar";
 import PostCard from "../components/PostCard";
 import BottomNav from "../components/BottomNav";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Feed() {
 const [sidebarOpen, setSidebarOpen] = useState(false);
 const [darkMode, setDarkMode] = useState(false);
+const [testPosts, setTestPosts] = useState([]);
+
+// Load test posts from localStorage on component mount
+useEffect(() => {
+  const savedPosts = localStorage.getItem('testPosts');
+  if (savedPosts) {
+    try {
+      setTestPosts(JSON.parse(savedPosts));
+    } catch (err) {
+      console.error('Failed to load test posts:', err);
+    }
+  }
+}, []);
 
   return (
     <div className={`feed-layout ${darkMode ? "dark" : ""}`}>
@@ -94,6 +107,19 @@ const [darkMode, setDarkMode] = useState(false);
           </div>
         </div>
 
+        {/* Display test posts from admin */}
+        {testPosts.length > 0 && (
+          <>
+            <div style={{ padding: '16px', background: 'rgba(100, 255, 218, 0.1)', borderRadius: '12px', marginBottom: '16px', textAlign: 'center', color: '#64ffda', fontWeight: '600' }}>
+              📝 {testPosts.length} Test Post{testPosts.length !== 1 ? 's' : ''} from Admin
+            </div>
+            {testPosts.map((post) => (
+              <PostCard key={post.id} post={{ ...post, verified: true }} />
+            ))}
+          </>
+        )}
+
+        {/* Default static posts */}
         <PostCard />
         <PostCard />
         <PostCard />

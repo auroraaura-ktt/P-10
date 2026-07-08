@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { apiRequest } from '../lib/api'
+import '../styles/AuthDesign.css'
 
 const RESEND_COOLDOWN_MS = 3 * 60 * 1000
 const PENDING_VERIFICATION_KEY = 'miitverse-pending-verification'
@@ -154,59 +155,83 @@ export default function Verify() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Verify email</h1>
-        <p>Enter the 8-digit code sent to your email.</p>
-
-        <label>
-          Email
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading || resendLoading}
+    <div className="auth-wrapper">
+      <div className="logo-section">
+        <div className="logo-container">
+          <img
+            src="/miitLogo.png"
+            alt="MIIT Logo"
+            className="miit-logo"
           />
-        </label>
+          <h1 className="logo-title">
+            <span className="miit">Miit</span><span className="verse">Verse</span>
+          </h1>
+          <p className="logo-subtitle">Official Social Hub of MIIT</p>
+        </div>
+      </div>
 
-        <label>
-          Verification Code (8 digits)
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            placeholder="00000000"
-            maxLength="8"
-            required
-            disabled={loading || resendLoading}
-          />
-        </label>
-
-        {error && <p className="auth-error">{error}</p>}
-        {info && <p style={{ color: '#0066cc' }}>{info}</p>}
-
-        <button type="submit" disabled={loading || code.length !== 8}>
-          {loading ? 'Verifying...' : 'Verify & Create Account'}
-        </button>
-
-        {remainingMs > 0 ? (
-          <p style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
-            Resend available in {formatCountdown(remainingMs)}
+      <div className="form-section">
+        <div className="auth-container">
+          <h2>Verify email</h2>
+          <p style={{ textAlign: 'center', color: '#8892b0', marginBottom: '24px' }}>
+            Enter the 8-digit code sent to your email.
           </p>
-        ) : (
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={resendLoading || !email}
-            style={{ marginTop: '16px' }}
-          >
-            {resendLoading ? 'Resending...' : 'Resend verification email'}
-          </button>
-        )}
 
-        <p style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
-          Check your spam folder if you do not see the code.
-        </p>
-      </form>
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading || resendLoading}
+              />
+            </div>
+
+            <div className="input-group">
+              <label>Verification Code (8 digits)</label>
+              <input
+                type="text"
+                placeholder="00000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                maxLength="8"
+                required
+                disabled={loading || resendLoading}
+              />
+            </div>
+
+            {error && <p style={{ color: '#ff6b6b', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
+            {info && <p style={{ color: '#64ffda', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{info}</p>}
+
+            <button type="submit" className="auth-btn" disabled={loading || code.length !== 8}>
+              {loading ? 'Verifying...' : 'Verify & Create Account'}
+            </button>
+          </form>
+
+          {remainingMs > 0 ? (
+            <p style={{ marginTop: '16px', fontSize: '14px', color: '#8892b0', textAlign: 'center' }}>
+              Resend available in {formatCountdown(remainingMs)}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading || !email}
+              className="auth-btn"
+              style={{ marginTop: '16px', background: 'rgba(100, 255, 218, 0.2)', color: '#64ffda', border: '1px solid #64ffda' }}
+            >
+              {resendLoading ? 'Resending...' : 'Resend verification email'}
+            </button>
+          )}
+
+          <p style={{ marginTop: '20px', fontSize: '14px', color: '#8892b0', textAlign: 'center' }}>
+            Check your spam folder if you do not see the code.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

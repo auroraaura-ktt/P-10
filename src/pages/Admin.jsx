@@ -30,6 +30,14 @@ export default function Admin() {
   const [resettingPassword, setResettingPassword] = useState(false)
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' })
 
+  const [testPostData, setTestPostData] = useState({
+    author: '',
+    content: '',
+    image: '',
+  })
+  const [creatingTestPost, setCreatingTestPost] = useState(false)
+  const [testPostMessage, setTestPostMessage] = useState({ type: '', text: '' })
+
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
     setError(null)
@@ -63,6 +71,51 @@ export default function Admin() {
       ...prev,
       [name]: value,
     }))
+  }
+
+  const handleTestPostChange = (e) => {
+    const { name, value } = e.target
+    setTestPostData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleCreateTestPost = (e) => {
+    e.preventDefault()
+    setCreatingTestPost(true)
+    setTestPostMessage({ type: '', text: '' })
+
+    try {
+      const newPost = {
+        id: Date.now(),
+        author: testPostData.author || 'Test User',
+        avatar: '📝',
+        timestamp: new Date().toLocaleString(),
+        content: testPostData.content,
+        image: testPostData.image || null,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+      }
+
+      const existingPosts = JSON.parse(localStorage.getItem('testPosts') || '[]')
+      const updatedPosts = [newPost, ...existingPosts]
+      localStorage.setItem('testPosts', JSON.stringify(updatedPosts))
+
+      setTestPostMessage({
+        type: 'success',
+        text: 'Test post created successfully! Check the Feed page to see it.',
+      })
+      setTestPostData({ author: '', content: '', image: '' })
+    } catch (err) {
+      setTestPostMessage({
+        type: 'error',
+        text: 'Failed to create test post',
+      })
+    } finally {
+      setCreatingTestPost(false)
+    }
   }
 
   const handleCreateUser = async (e) => {
@@ -219,61 +272,6 @@ export default function Admin() {
       case 'users':
         return (
           <>
-            <section id="users" className="admin-create-user">
-              <div className="admin-create-header">
-                <h2>Create New User</h2>
-                <p>Add a new user to the system with username, email, and password.</p>
-              </div>
-
-              {createMessage.text && (
-                <p className={`message message-${createMessage.type}`}>
-                  {createMessage.text}
-                </p>
-              )}
-
-              <form onSubmit={handleCreateUser} className="admin-create-form">
-                <div className="form-group">
-                  <label htmlFor="username">Username</label>
-                  <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="email">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="password">Password</label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleFormChange}
-                    required
-                  />
-                </div>
-
-                <button type="submit" className="form-submit" disabled={creatingUser}>
-                  {creatingUser ? 'Sending code...' : 'Send Verification Code'}
-                </button>
-              </form>
-            </section>
-
             <section className="admin-users">
               <div className="admin-users-header">
                 <h2>Manage Users</h2>
@@ -292,7 +290,7 @@ export default function Admin() {
                   <table className="admin-users-table">
                     <thead>
                       <tr>
-                        <th>Username</th>
+                        <th>Full Name</th>
                         <th>Email</th>
                         <th>Role</th>
                         <th>Created At</th>
@@ -302,7 +300,7 @@ export default function Admin() {
                     <tbody>
                       {users.map((userItem) => (
                         <tr key={userItem.id}>
-                          <td>{userItem.username}</td>
+                          <td>{userItem.fullName || userItem.username}</td>
                           <td>{userItem.email}</td>
                           <td>{userItem.role}</td>
                           <td>{new Date(userItem.createdAt).toLocaleString()}</td>
@@ -317,7 +315,7 @@ export default function Admin() {
                             <button
                               type="button"
                               className="admin-delete-btn"
-                              onClick={() => handleDeleteUser(userItem.id, userItem.username)}
+                              onClick={() => handleDeleteUser(userItem.id, userItem.fullName || userItem.username)}
                               disabled={userItem.id === user?.id}
                               title={userItem.id === user?.id ? 'You cannot delete your own admin account' : 'Delete this user'}
                             >
@@ -393,6 +391,63 @@ export default function Admin() {
           </section>
         )
       case 'posts':
+        return (
+          <section id="posts" className="admin-page-accounts">
+            <div className="admin-create-header">
+              <h2>Create Test Post</h2>
+              <p>Create test posts to view and test post display in the Feed page. These posts will be stored locally and display in the Feed.</p>
+            </div>
+
+            {testPostMessage.text && (
+              <p className={`message message-${testPostMessage.type}`}>
+                {testPostMessage.text}
+              </p>
+            )}
+
+            <form onSubmit={handleCreateTestPost} className="admin-create-form">
+              <div className="form-group">
+                <label htmlFor="testAuthor">Author Name (Optional)</label>
+                <input
+                  type="text"
+                  id="testAuthor"
+                  name="author"
+                  value={testPostData.author}
+                  onChange={handleTestPostChange}
+                  placeholder="Enter author name or leave blank for 'Test User'"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="testContent">Post Content</label>
+                <textarea
+                  id="testContent"
+                  name="content"
+                  value={testPostData.content}
+                  onChange={handleTestPostChange}
+                  placeholder="What's on your mind?"
+                  rows="6"
+                  required
+                ></textarea>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="testImage">Image URL (Optional)</label>
+                <input
+                  type="url"
+                  id="testImage"
+                  name="image"
+                  value={testPostData.image}
+                  onChange={handleTestPostChange}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <button type="submit" className="form-submit" disabled={creatingTestPost}>
+                {creatingTestPost ? 'Creating post...' : 'Create Test Post'}
+              </button>
+            </form>
+          </section>
+        )
       case 'events':
       case 'reports':
         return (
@@ -457,7 +512,7 @@ export default function Admin() {
                 {newestUsers.length > 0 ? (
                   newestUsers.map((userItem) => (
                     <div className="user-row" key={userItem.id}>
-                      <span>{userItem.username}</span>
+                      <span>{userItem.fullName || userItem.username}</span>
                       <span>{new Date(userItem.createdAt).toLocaleDateString()}</span>
                     </div>
                   ))

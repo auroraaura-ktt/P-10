@@ -23,9 +23,9 @@ function Navbar() {
         <li><Link to="/">Home</Link></li>
         <li><Link to="/feed">Feed</Link></li>
         <li><Link to="/login">Login</Link></li>
-        <li><Link to="/admin-login">Admin Login</Link></li>
         <li><Link to="/register">Register</Link></li>
-        {user?.role === 'admin' && <li><Link to="/admin">Admin</Link></li>}
+        <li><Link to="/about">About</Link></li>
+        <li><Link to="/contact">Contact Us</Link></li>
       </ul>
 
       {user ? (
