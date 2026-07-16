@@ -69,21 +69,20 @@ export default function ContactUs() {
               <span className="info-icon">📍</span>
               <h4>Location</h4>
               <p>Myanmar Institute of Information Technology</p>
-              <p>Yangon, Myanmar</p>
+              <p>Mandalay, Myanmar</p>
             </div>
 
             <div className="info-card">
               <span className="info-icon">📧</span>
               <h4>Email</h4>
-              <p><a href="mailto:contact@miit.edu.mm">contact@miit.edu.mm</a></p>
-              <p><a href="mailto:support@miitverse.com">support@miitverse.com</a></p>
+              <p><a href="mailto:miiverse.verify@gmail.com">miiverse.verify@gmail.com</a></p>
             </div>
 
             <div className="info-card">
               <span className="info-icon">📱</span>
               <h4>Phone</h4>
-              <p>+95 (0) 123 456 789</p>
-              <p>Available: Mon-Fri, 9 AM - 5 PM</p>
+              <p>+95 (0) 770 474 803</p>
+              <p>Available: Mon-Fri, 9 AM - 4 PM</p>
             </div>
 
             <div className="info-card">
@@ -105,7 +104,7 @@ export default function ContactUs() {
 
             <form onSubmit={handleSubmit} className="contact-form">
               <div className="form-group">
-                <label htmlFor="name">Full Name</label>
+                <label htmlFor="name" style={{ color: '#ffffff' }}>Full Name</label>
                 <input
                   type="text"
                   id="name"
@@ -118,7 +117,7 @@ export default function ContactUs() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email Address</label>
+                <label htmlFor="email" style={{ color: '#ffffff' }}>Email Address</label>
                 <input
                   type="email"
                   id="email"
@@ -131,7 +130,7 @@ export default function ContactUs() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="subject">Subject</label>
+                <label htmlFor="subject" style={{ color: '#ffffff' }}>Subject</label>
                 <input
                   type="text"
                   id="subject"
@@ -144,7 +143,7 @@ export default function ContactUs() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="message">Message</label>
+                <label htmlFor="message" style={{ color: '#ffffff' }}>Message</label>
                 <textarea
                   id="message"
                   name="message"

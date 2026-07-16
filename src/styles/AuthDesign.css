@@ -79,7 +79,7 @@ html, body, #root {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(100, 255, 218, 0.12);
   color: #fff;
   width: 100%;
-  max-width: 430px;
+  max-width: 520px;
   border: 1px solid rgba(100, 255, 218, 0.12);
   animation: slideInRight 0.6s ease-out;
 }
@@ -92,8 +92,14 @@ html, body, #root {
   font-weight: 700;
 }
 
+.auth-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .input-group {
-  margin-bottom: 18px;
+  margin-bottom: 0;
   text-align: left;
 }
 
@@ -102,32 +108,33 @@ html, body, #root {
   margin-bottom: 8px;
   font-size: 14px;
   color: #8892b0;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-.input-group input {
+.input-group input:not(.otp-box) {
   width: 100%;
   padding: 13px 15px;
-  border-radius: 10px;
-  border: 1px solid #233554;
-  background: rgba(10, 25, 47, 0.7);
+  border-radius: 12px;
+  border: 1px solid rgba(35, 53, 84, 0.95);
+  background: rgba(10, 25, 47, 0.82);
   color: #ccd6f6;
-  font-size: 14px;
-  transition: all 0.3s ease;
+  font-size: 15px;
+  transition: all 0.25s ease;
 }
 
-.input-group input:focus {
+.input-group input:not(.otp-box):focus {
   outline: none;
   border-color: #64ffda;
   background: rgba(10, 25, 47, 0.9);
   box-shadow: 0 0 12px rgba(100, 255, 218, 0.2);
 }
 
-.input-group input::placeholder {
+.input-group input:not(.otp-box)::placeholder {
   color: #495670;
 }
 
-.input-group input:disabled {
+.input-group input:not(.otp-box):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -135,19 +142,27 @@ html, body, #root {
 .otp-inputs {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .otp-box {
-  width: 42px;
-  height: 48px;
-  border-radius: 10px;
+  width: 50px;
+  height: 58px;
+  padding: 0;
+  border-radius: 12px;
   border: 1px solid rgba(100, 255, 218, 0.25);
   background: rgba(10, 25, 47, 0.85);
   color: #f8fbff;
+  -webkit-text-fill-color: #f8fbff;
   text-align: center;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  line-height: 58px;
+  caret-color: #64ffda;
   box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.2);
   transition: all 0.25s ease;
 }

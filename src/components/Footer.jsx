@@ -15,25 +15,23 @@ export default function Footer() {
         <div className="footer-col">
           <h3>Quick Links</h3>
           <a href="/">Home</a>
-          <a href="/feed">Feed</a>
           <a href="/news">News</a>
-          <a href="/events">Events</a>
+          <a href="/login">Login</a>
+          <a href="/about">About Us</a>
+          <a href="/contact">Contact Us</a>
         </div>
 
         {/* RIGHT */}
         <div className="footer-col">
           <h3>Connect</h3>
-          <p>📧 miitverse@miit.edu.mm</p>
+          <p><a href="mailto:miiverse.verify@gmail.com">miiverse.verify@gmail.com</a></p>
+          <p>📱 +959 770 474 803</p>
           <p>📍 MIIT Campus</p>
 
-          <div className="socials">
-            <a href="#">Facebook</a>
-            <a href="#">Instagram</a>
-            <a href="#">GitHub</a>
           </div>
         </div>
 
-      </div>
+      
 
       {/* BOTTOM BAR */}
       <div className="footer-bottom">
