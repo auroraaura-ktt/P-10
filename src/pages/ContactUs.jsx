@@ -75,7 +75,7 @@ export default function ContactUs() {
             <div className="info-card">
               <span className="info-icon">📧</span>
               <h4>Email</h4>
-              <p><a href="mailto:miiverse.verify@gmail.com">miiverse.verify@gmail.com</a></p>
+              <p><a href="mailto:miitverse.verify@gmail.com">miitverse.verify@gmail.com</a></p>
             </div>
 
             <div className="info-card">

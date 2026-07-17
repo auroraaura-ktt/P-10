@@ -116,10 +116,10 @@ export default function PostCard({ post = {} }) {
 
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontWeight: "600" }}>{author}</span>
+              <span className="post-card-author" style={{ fontWeight: "600" }}>{author}</span>
               {verified && <VerifiedBadge size="small" />}
             </div>
-            <div style={{ color: "#666", fontSize: "12px" }}>{timestamp}</div>
+            <div className="post-card-time">{timestamp}</div>
           </div>
         </div>
 
@@ -130,8 +130,8 @@ export default function PostCard({ post = {} }) {
       <div style={{ padding: "0 16px 16px" }}>
         {title && (
           <h3
+            className="post-card-title"
             style={{
-              color: "#001e62",
               marginBottom: "8px",
             }}
           >
@@ -140,8 +140,8 @@ export default function PostCard({ post = {} }) {
         )}
 
         <p
+          className="post-card-body"
           style={{
-            color: "#555",
             lineHeight: "1.6",
             whiteSpace: "pre-wrap",
             wordWrap: "break-word",
@@ -175,7 +175,7 @@ export default function PostCard({ post = {} }) {
         style={{
           padding: "12px 16px",
           fontSize: "14px",
-          color: "#666",
+          color: "#4B5D7A",
           borderBottom: "1px solid #eee",
           display: "flex",
           justifyContent: "space-between",
@@ -200,6 +200,7 @@ export default function PostCard({ post = {} }) {
         }}
       >
         <button
+          className="post-action-btn"
           onClick={handleLike}
           style={{
             flex: 1,
@@ -212,7 +213,7 @@ export default function PostCard({ post = {} }) {
             cursor: "pointer",
             padding: "8px",
             fontSize: "16px",
-            color: reactions.liked ? "#e74c3c" : "#666",
+            color: reactions.liked ? "#e74c3c" : undefined,
             fontWeight: reactions.liked ? "600" : "normal",
             transition: "all 0.2s ease",
           }}
@@ -220,7 +221,7 @@ export default function PostCard({ post = {} }) {
             if (!reactions.liked) e.target.style.color = "#e74c3c";
           }}
           onMouseLeave={(e) => {
-            if (!reactions.liked) e.target.style.color = "#666";
+            if (!reactions.liked) e.target.style.color = "#0B1E4F";
           }}
         >
           <span style={{ fontSize: "18px" }}>❤️</span>
@@ -228,6 +229,7 @@ export default function PostCard({ post = {} }) {
         </button>
 
         <button
+          className="post-action-btn"
           onClick={handleComment}
           style={{
             flex: 1,
@@ -240,17 +242,17 @@ export default function PostCard({ post = {} }) {
             cursor: "pointer",
             padding: "8px",
             fontSize: "16px",
-            color: "#666",
             transition: "all 0.2s ease",
           }}
-          onMouseEnter={(e) => (e.target.style.color = "#3498db")}
-          onMouseLeave={(e) => (e.target.style.color = "#666")}
+          onMouseEnter={(e) => (e.target.style.color = "#F5B62D")}
+          onMouseLeave={(e) => (e.target.style.color = "#F7F9FC")}
         >
           <span style={{ fontSize: "18px" }}>💬</span>
           <span>Comment</span>
         </button>
 
         <button
+          className="post-action-btn"
           onClick={handleShare}
           style={{
             flex: 1,
@@ -263,17 +265,17 @@ export default function PostCard({ post = {} }) {
             cursor: "pointer",
             padding: "8px",
             fontSize: "16px",
-            color: "#666",
             transition: "all 0.2s ease",
           }}
-          onMouseEnter={(e) => (e.target.style.color = "#27ae60")}
-          onMouseLeave={(e) => (e.target.style.color = "#666")}
+          onMouseEnter={(e) => (e.target.style.color = "#F5B62D")}
+          onMouseLeave={(e) => (e.target.style.color = "#F7F9FC")}
         >
           <span style={{ fontSize: "18px" }}>📤</span>
           <span>Repost</span>
         </button>
 
         <button
+          className="post-action-btn"
           style={{
             flex: 1,
             display: "flex",
@@ -285,11 +287,10 @@ export default function PostCard({ post = {} }) {
             cursor: "pointer",
             padding: "8px",
             fontSize: "16px",
-            color: "#666",
             transition: "all 0.2s ease",
           }}
-          onMouseEnter={(e) => (e.target.style.color = "#f39c12")}
-          onMouseLeave={(e) => (e.target.style.color = "#666")}
+          onMouseEnter={(e) => (e.target.style.color = "#F5B62D")}
+          onMouseLeave={(e) => (e.target.style.color = "#F7F9FC")}
         >
           <span style={{ fontSize: "18px" }}>🔖</span>
           <span>Save</span>
@@ -299,12 +300,13 @@ export default function PostCard({ post = {} }) {
       {/* Engagement Stats */}
       <div className="post-engagement" style={{ padding: "12px 16px" }}>
         <div
+          className="post-card-engagement-count"
           style={{
             fontWeight: "600",
             marginBottom: "8px",
             fontSize: "14px",
             cursor: "pointer",
-            color: "#1877f2",
+            color: "#F5B62D",
           }}
           onClick={handleReactionCountClick}
         >
@@ -312,9 +314,9 @@ export default function PostCard({ post = {} }) {
         </div>
 
         <p
+          className="post-card-body"
           style={{
             lineHeight: "1.5",
-            color: "#333",
             fontSize: "14px",
             marginBottom: "8px",
           }}
@@ -324,8 +326,8 @@ export default function PostCard({ post = {} }) {
         </p>
 
         <div
+          className="post-card-comments-link"
           style={{
-            color: "#1877f2",
             fontSize: "12px",
             cursor: "pointer",
             fontWeight: "600",

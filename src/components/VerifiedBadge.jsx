@@ -1,97 +1,81 @@
 export default function VerifiedBadge({ size = "small" }) {
   const sizes = {
     small: {
-      width: "16px",
-      height: "16px",
-      checkSize: "10px",
+      width: 18,
+      height: 18,
+      stroke: 1.8,
     },
     medium: {
-      width: "20px",
-      height: "20px",
-      checkSize: "12px",
+      width: 22,
+      height: 22,
+      stroke: 2,
     },
     large: {
-      width: "24px",
-      height: "24px",
-      checkSize: "14px",
+      width: 26,
+      height: 26,
+      stroke: 2.3,
     },
   };
 
-  const sizeConfig = sizes[size] || sizes.small;
+  const s = sizes[size] || sizes.small;
 
   return (
     <div
+      title="Verified Account"
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        width: sizeConfig.width,
-        height: sizeConfig.height,
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #1877f2 0%, #1565c0 100%)",
-        boxShadow: "0 2px 8px rgba(24, 119, 242, 0.4)",
-        padding: "2px",
-        position: "relative",
+        marginLeft: "6px",
+        flexShrink: 0,
       }}
-      title="Verified Account"
     >
-      {/* Outer ring for depth */}
-      <div
-        style={{
-          position: "absolute",
-          inset: "0",
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #1877f2 0%, #1565c0 100%)",
-          opacity: "0.1",
-          boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.3)",
-        }}
-      />
-
-      {/* Inner circle background */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #1877f2 0%, #1565c0 100%)",
-          position: "relative",
-          zIndex: 1,
-        }}
+      <svg
+        width={s.width}
+        height={s.height}
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Checkmark SVG */}
-        <svg
-          width={sizeConfig.checkSize}
-          height={sizeConfig.checkSize}
-          viewBox="0 0 20 20"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{
-            filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2))",
-          }}
-        >
-          <path
-            d="M16.7071 5.70711C17.0976 5.31658 17.0976 4.68342 16.7071 4.29289C16.3166 3.90237 15.6834 3.90237 15.2929 4.29289L8 11.5858L4.70711 8.29289C4.31658 7.90237 3.68342 7.90237 3.29289 8.29289C2.90237 8.68342 2.90237 9.31658 3.29289 9.70711L7.29289 13.7071C7.68342 14.0976 8.31658 14.0976 8.70711 13.7071L16.7071 5.70711Z"
-            fill="white"
-          />
-        </svg>
-      </div>
+        {/* Decagram Badge */}
+        <polygon
+          points="
+          12,1
+          14.3,3.8
+          18,2.8
+          19.2,6.4
+          22.5,8.5
+          20.8,12
+          22.5,15.5
+          19.2,17.6
+          18,21.2
+          14.3,20.2
+          12,23
+          9.7,20.2
+          6,21.2
+          4.8,17.6
+          1.5,15.5
+          3.2,12
+          1.5,8.5
+          4.8,6.4
+          6,2.8
+          9.7,3.8
+          "
+          fill="#0B1E4F"
+          stroke="#F5B62D"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
 
-      {/* Shine effect */}
-      <div
-        style={{
-          position: "absolute",
-          top: "1px",
-          left: "1px",
-          width: "40%",
-          height: "40%",
-          background: "rgba(255, 255, 255, 0.3)",
-          borderRadius: "50%",
-          zIndex: 2,
-        }}
-      />
+        {/* Check Mark */}
+        <path
+          d="M8.5 12.2L10.8 14.5L15.8 9.5"
+          stroke="#F5B62D"
+          strokeWidth={s.stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
     </div>
   );
 }

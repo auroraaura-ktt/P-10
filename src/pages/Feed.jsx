@@ -50,7 +50,7 @@ useEffect(() => {
         <div className="profile-card">
           <div className="profile-avatar-large">MK</div>
           <h3>Minn Khant</h3>
-          <p>@minnkhant</p>
+          <p>2022-MIIT-CSE-057</p>
         </div>
 
       </aside>

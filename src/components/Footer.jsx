@@ -24,7 +24,7 @@ export default function Footer() {
         {/* RIGHT */}
         <div className="footer-col">
           <h3>Connect</h3>
-          <p><a href="mailto:miiverse.verify@gmail.com">miiverse.verify@gmail.com</a></p>
+          <p><a href="mailto:miitverse.verify@gmail.com">miitverse.verify@gmail.com</a></p>
           <p>📱 +959 770 474 803</p>
           <p>📍 MIIT Campus</p>
 

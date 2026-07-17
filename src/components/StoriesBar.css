@@ -3,15 +3,13 @@
   gap: 14px;
   padding: 14px;
   overflow-x: auto;
-
-  background: var(--white);
+  background: #132F63;
   border-radius: 14px;
-
-  border: 1px solid var(--gray);
+  border: 1px solid #274A82;
   margin-bottom: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
 }
 
-/* story card */
 .story {
   display: flex;
   flex-direction: column;
@@ -20,34 +18,29 @@
   cursor: pointer;
 }
 
-/* avatar ring (MiitVerse style) */
 .story-avatar {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-
-  background: var(--navy);
-  color: var(--yellow);
-
+  background: #0B1E4F;
+  color: #F5B62D;
   display: flex;
   align-items: center;
   justify-content: center;
-
   font-weight: bold;
-
-  border: 2px solid var(--yellow);
-  box-shadow: 0 0 0 2px var(--navy-light);
+  border: 3px solid #F5B62D;
+  box-shadow: 0 0 0 2px rgba(245, 182, 45, 0.12);
   transition: 0.2s ease;
 }
 
 .story:hover .story-avatar {
   transform: scale(1.08);
-  background: var(--navy-light);
+  background: #1B4185;
+  border-color: #FFD166;
 }
 
-/* name text */
 .story span {
   font-size: 12px;
   margin-top: 6px;
-  color: var(--navy);
+  color: #F7F9FC;
 }
