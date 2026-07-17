@@ -55,6 +55,23 @@
   box-shadow: 0 4px 10px rgba(8, 28, 77, 0.2);
 }
 
+.feed-layout.dark .story-add-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #e2b553;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(8, 28, 77, 0.2);
+}
+
 .story:hover .story-avatar {
   transform: scale(1.08);
   box-shadow: 0 0 0 4px rgba(245, 182, 45, 0.24);

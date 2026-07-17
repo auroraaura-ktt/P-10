@@ -1435,15 +1435,25 @@ html, body {
 }
 
 /* INPUTS */
-.feed-layout.dark input,
+.feed-layout.dark input {
+  background: #0D214B;
+  color: #F7F9FC;
+  border: 1px solid #274A82;
+}
+
+.feed-layout.dark .search-bar-wrap {
+  background: #0D214B;
+  border: 1px solid #274A82;
+}
+
 .feed-layout.dark .search-bar {
-  background: #F7F9FC;
-  color: #0D214B;
-  /* border: 1px solid #274A82; */
+  background: transparent;
+  color: #F7F9FC;
+  border: none;
 }
 
 .feed-layout.dark .search-bar-wrap svg {
-  color: #081C4D;
+  color: #F7F9FC;
 }
 
 .feed-layout.dark .event-icon {
@@ -1453,7 +1463,7 @@ html, body {
 
 .feed-layout.dark input::placeholder,
 .feed-layout.dark .search-bar::placeholder {
-  color: #B8C4D9;
+  color: #e3e8f1;
 }
 
 /* TOPBAR */
