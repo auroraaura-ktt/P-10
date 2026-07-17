@@ -1,16 +1,27 @@
-import { FaHome, FaCompass, FaCalendarAlt, FaUsers, FaComments } from "react-icons/fa";
+import { Link } from 'react-router-dom'
+import { FaHome, FaCompass, FaCalendarAlt, FaUsers, FaComments } from 'react-icons/fa'
+import { useAuth } from '../context/useAuth'
 
 const navItems = [
-  { label: "Home", icon: FaHome, active: true },
-  { label: "Explore", icon: FaCompass },
-  { label: "Events", icon: FaCalendarAlt },
-  { label: "Community", icon: FaUsers },
-  { label: "Messages", icon: FaComments },
-];
+  { label: 'Home', icon: FaHome, to: '/' },
+  { label: 'Explore', icon: FaCompass, to: '/feed' },
+  { label: 'Events', icon: FaCalendarAlt, to: '/feed' },
+  { label: 'Community', icon: FaUsers, to: '/feed' },
+  { label: 'Messages', icon: FaComments, to: '/feed' },
+]
 
 export default function LeftSidebar({ sidebarOpen, setSidebarOpen }) {
+  const { user } = useAuth()
+
+  const initials = user?.username
+    ? user.username
+        .split(' ')
+        .map((part) => part[0]?.toUpperCase())
+        .join('')
+    : 'U'
+
   return (
-    <aside className={`left-sidebar ${sidebarOpen ? "active" : ""}`}>
+    <aside className={`left-sidebar ${sidebarOpen ? 'active' : ''}`}>
       <div className="close-btn" onClick={() => setSidebarOpen(false)}>
         ✕
       </div>
@@ -26,10 +37,12 @@ export default function LeftSidebar({ sidebarOpen, setSidebarOpen }) {
       </div>
 
       <ul className="sidebar-menu">
-        {navItems.map(({ label, icon: Icon, active }) => (
-          <li key={label} className={active ? "active" : ""}>
-            <Icon />
-            <span>{label}</span>
+        {navItems.map(({ label, icon: Icon, to }) => (
+          <li key={label}>
+            <Link to={to}>
+              <Icon />
+              <span>{label}</span>
+            </Link>
           </li>
         ))}
       </ul>
@@ -37,11 +50,15 @@ export default function LeftSidebar({ sidebarOpen, setSidebarOpen }) {
       <div className="sidebar-divider" />
 
       <div className="profile-card">
-        <div className="profile-avatar-large">MK</div>
-        <h3>Minn Khant</h3>
-        <p>2022-MIIT-CSE-057</p>
-        <button className="profile-btn">View Profile</button>
+        <div className="profile-avatar-large">{initials}</div>
+        <h3>{user?.username || 'MiitVerse User'}</h3>
+        <p>{user?.email || 'Guest member'}</p>
+        {user ? (
+          <Link className="profile-btn" to="/profile">View Profile</Link>
+        ) : (
+          <Link className="profile-btn" to="/login">Sign in</Link>
+        )}
       </div>
     </aside>
-  );
+  )
 }

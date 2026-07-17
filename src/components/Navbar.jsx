@@ -21,10 +21,19 @@ function Navbar() {
 
       <ul>
         <li><Link to="/">Home</Link></li>
-        <li><Link to="/login">Login</Link></li>
-        <li><Link to="/register">Register</Link></li>
         <li><Link to="/about">About</Link></li>
         <li><Link to="/contact">Contact Us</Link></li>
+        {user ? (
+          <>
+            <li><Link to="/feed">Feed</Link></li>
+            <li><Link to="/profile">Profile</Link></li>
+          </>
+        ) : (
+          <>
+            <li><Link to="/login">Login</Link></li>
+            <li><Link to="/register">Register</Link></li>
+          </>
+        )}
       </ul>
 
       {user ? (
@@ -33,7 +42,7 @@ function Navbar() {
         <Link className="join-btn" to="/register">Join Us</Link>
       )}
     </nav>
-  );
+  )
 }
 
 export default Navbar

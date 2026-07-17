@@ -40,6 +40,121 @@ export async function getCurrentUser(req, res) {
   }
 }
 
+export async function updateCurrentUser(req, res) {
+  const { username } = req.body || {}
+  const trimmedUsername = username?.trim()
+
+  if (!trimmedUsername) {
+    return res.status(400).json({ message: 'username is required' })
+  }
+
+  const session = driver.session()
+
+  try {
+    const existing = await session.executeRead((tx) =>
+      tx.run(
+        `
+          MATCH (user:User)
+          WHERE toLower(user.username) = toLower($username)
+            AND user.id <> $id
+          RETURN user
+          LIMIT 1
+        `,
+        { username: trimmedUsername, id: req.user.id }
+      )
+    )
+
+    if (existing.records.length > 0) {
+      return res.status(409).json({ message: 'Username is already taken' })
+    }
+
+    const result = await session.executeWrite((tx) =>
+      tx.run(
+        `
+          MATCH (user:User { id: $id })
+          SET user.username = $username
+          RETURN user
+        `,
+        { id: req.user.id, username: trimmedUsername }
+      )
+    )
+
+    if (result.records.length === 0) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    const user = getUserProperties(result.records[0].get('user'))
+
+    return res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    })
+  } finally {
+    await session.close()
+  }
+}
+
+export async function updateCurrentPassword(req, res) {
+  const { currentPassword, newPassword } = req.body || {}
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'currentPassword and newPassword are required' })
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long' })
+  }
+
+  const session = driver.session()
+
+  try {
+    const result = await session.executeRead((tx) =>
+      tx.run(
+        `
+          MATCH (user:User { id: $id })
+          RETURN user
+          LIMIT 1
+        `,
+        { id: req.user.id }
+      )
+    )
+
+    if (result.records.length === 0) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    const user = getUserProperties(result.records[0].get('user'))
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash)
+
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Current password is incorrect' })
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+
+    await session.executeWrite((tx) =>
+      tx.run(
+        `
+          MATCH (user:User { id: $id })
+          SET user.passwordHash = $passwordHash
+          RETURN user
+        `,
+        { id: req.user.id, passwordHash }
+      )
+    )
+
+    return res.json({ message: 'Password updated successfully' })
+  } finally {
+    await session.close()
+  }
+}
+
 export async function listUsers(req, res) {
   const session = driver.session()
 

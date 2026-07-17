@@ -88,6 +88,33 @@ export function AuthProvider({ children }) {
 
         return data
       },
+      updateProfile: async (payload) => {
+        const data = await apiRequest('/users/me', {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${auth?.token}`,
+          },
+          body: JSON.stringify(payload),
+        })
+
+        setAuth((currentAuth) => ({
+          token: currentAuth?.token ?? auth?.token,
+          user: data.user,
+        }))
+
+        return data.user
+      },
+      changePassword: async (payload) => {
+        const data = await apiRequest('/users/me/password', {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${auth?.token}`,
+          },
+          body: JSON.stringify(payload),
+        })
+
+        return data
+      },
       logout: () => {
         setAuth(null)
       },
