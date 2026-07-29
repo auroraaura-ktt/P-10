@@ -4,7 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto'
 
 import { driver } from '../config/neo4j.js'
 import { env } from '../config/env.js'
-import { normalizeEmail, isPageAccountEmail } from '../utils/accountAccess.js'
+import { normalizeEmail, isPageAccountEmail, isValidRegistrationEmail } from '../utils/accountAccess.js'
 import { sendVerificationEmail } from '../utils/emailService.js'
 
 const pendingRegistrations = new Map()
@@ -57,6 +57,12 @@ export async function registerUser(req, res) {
   if (!trimmedUsername || !normalizedEmail || !password) {
     return res.status(400).json({
       message: 'username, email, and password are required',
+    })
+  }
+
+  if (!isValidRegistrationEmail(normalizedEmail)) {
+    return res.status(400).json({
+      message: 'Only @miit.edu.mm email addresses are allowed for registration.',
     })
   }
 

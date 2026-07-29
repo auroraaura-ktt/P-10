@@ -2,11 +2,15 @@ export function normalizeEmail(email) {
   return email?.trim().toLowerCase() || ''
 }
 
-export function isPageAccountEmail(email) {
+export function isValidRegistrationEmail(email) {
   const normalizedEmail = normalizeEmail(email)
-  return normalizedEmail.endsWith('@miit.edu.mm')
+  return Boolean(normalizedEmail) && normalizedEmail.endsWith('@miit.edu.mm')
+}
+
+export function isPageAccountEmail(email) {
+  return isValidRegistrationEmail(email)
 }
 
 export function requiresEmailVerification(email, isPageAccount) {
-  return !isPageAccount && isPageAccountEmail(email)
+  return !isPageAccount && isValidRegistrationEmail(email)
 }

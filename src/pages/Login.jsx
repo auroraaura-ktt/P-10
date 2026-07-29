@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/useAuth'
+import { canUseUserLogin } from '../lib/authAccess'
 import '../styles/AuthDesign.css'
 
 export default function Login() {
@@ -19,7 +20,12 @@ export default function Login() {
     try {
       const user = await login(form)
 
-      navigate(user.role === 'admin' ? '/admin' : '/feed')
+      if (!canUseUserLogin(user.role)) {
+        setError('This account is for admin access. Please use the admin login page.')
+        return
+      }
+
+      navigate('/feed')
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {

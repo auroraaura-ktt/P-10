@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/useAuth'
+import { canUseUserLogin } from '../lib/authAccess'
 import '../styles/AuthDesign.css'
 
 export default function AdminLogin() {
@@ -20,7 +21,7 @@ export default function AdminLogin() {
     try {
       const user = await login(form)
 
-      if (user.role !== 'admin') {
+      if (canUseUserLogin(user.role)) {
         setError('This account is not allowed to access admin.')
         return
       }

@@ -10,6 +10,7 @@ export default function Register() {
   const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailValidationMessage, setEmailValidationMessage] = useState('')
   const [passwordValidation, setPasswordValidation] = useState({
     isLengthValid: false,
     hasUpperCase: false,
@@ -35,10 +36,30 @@ export default function Register() {
     }
   }
 
+  const validateEmail = (value) => {
+    const normalizedEmail = value.trim().toLowerCase()
+
+    if (!normalizedEmail) {
+      return ''
+    }
+
+    return normalizedEmail.endsWith('@miit.edu.mm')
+      ? ''
+      : 'Only @miit.edu.mm email addresses are allowed for registration.'
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
     setLoading(true)
+
+    const emailMessage = validateEmail(form.email)
+    if (emailMessage) {
+      setEmailValidationMessage(emailMessage)
+      setError(emailMessage)
+      setLoading(false)
+      return
+    }
 
     if (!passwordValidation.isValid) {
       setError('Password must contain: uppercase letter, lowercase letter, number, special symbol, and be at least 8 characters')
@@ -104,10 +125,18 @@ export default function Register() {
                 type="email"
                 placeholder="Enter your email"
                 value={form.email}
-                onChange={(event) => setForm({ ...form, email: event.target.value })}
+                onChange={(event) => {
+                  const nextEmail = event.target.value
+                  setForm({ ...form, email: nextEmail })
+                  setEmailValidationMessage(validateEmail(nextEmail))
+                  setError('')
+                }}
                 required
                 disabled={loading}
               />
+              {emailValidationMessage && (
+                <p style={{ color: '#ff6b6b', fontSize: '12px', marginTop: '8px' }}>{emailValidationMessage}</p>
+              )}
             </div>
 
             <div className="input-group">
