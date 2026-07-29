@@ -6,7 +6,8 @@
 
 .admin-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: #eef2ff;
 }
 
@@ -14,6 +15,11 @@
 
 .admin-sidebar {
   width: 280px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
   background: linear-gradient(
     180deg,
     rgb(2, 2, 47),
@@ -99,7 +105,9 @@
 
 .admin-main {
   flex: 1;
+  min-width: 0;
   padding: 30px;
+  overflow-y: auto;
 }
 
 .admin-header {

@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "promote-user": "npm --prefix server run promote-user --",
-    "seed-user": "npm --prefix server run seed-user --"
+    "seed-user": "npm --prefix server run seed-user --",
+    "seed-sample-users": "npm --prefix server run seed-sample-users --"
   },
   "dependencies": {
     "react": "^19.2.6",

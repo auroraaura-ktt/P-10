@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
-import Navbar from '../components/Navbar'
+import './Admin.css'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -75,12 +75,13 @@ export default function Profile() {
   const styles = {
     page: {
       minHeight: '100vh',
-      background: '#07111f',
+      background: 'linear-gradient(135deg, #040b16 0%, #07111f 45%, #0f172a 100%)',
       color: '#f8fafc',
       padding: '24px 16px 48px',
+      fontFamily: 'Inter, Segoe UI, sans-serif',
     },
     container: {
-      maxWidth: '980px',
+      maxWidth: '1100px',
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
@@ -92,11 +93,11 @@ export default function Profile() {
       gridTemplateColumns: '1.2fr 0.8fr',
     },
     card: {
-      background: 'rgba(15, 23, 42, 0.9)',
-      border: '1px solid rgba(148, 163, 184, 0.2)',
-      borderRadius: '18px',
-      padding: '20px',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+      background: 'rgba(10, 18, 32, 0.95)',
+      border: '1px solid rgba(148, 163, 184, 0.22)',
+      borderRadius: '16px',
+      padding: '22px',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
     },
     profileCard: {
       display: 'flex',
@@ -104,8 +105,8 @@ export default function Profile() {
       alignItems: 'flex-start',
     },
     avatar: {
-      width: '56px',
-      height: '56px',
+      width: '58px',
+      height: '58px',
       borderRadius: '50%',
       background: 'linear-gradient(135deg, #64ffda, #4f46e5)',
       color: '#08111d',
@@ -127,6 +128,7 @@ export default function Profile() {
     name: {
       margin: '0 0 6px',
       fontSize: '24px',
+      fontWeight: 700,
     },
     handle: {
       margin: '0 0 10px',
@@ -145,6 +147,7 @@ export default function Profile() {
     sectionTitle: {
       margin: '0 0 4px',
       fontSize: '18px',
+      fontWeight: 700,
     },
     infoRow: {
       display: 'flex',
@@ -160,11 +163,11 @@ export default function Profile() {
       gridTemplateColumns: '1fr 1fr',
     },
     formCard: {
-      background: 'rgba(15, 23, 42, 0.9)',
-      border: '1px solid rgba(148, 163, 184, 0.2)',
-      borderRadius: '18px',
-      padding: '20px',
-      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+      background: 'rgba(10, 18, 32, 0.95)',
+      border: '1px solid rgba(148, 163, 184, 0.22)',
+      borderRadius: '16px',
+      padding: '22px',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
     },
     label: {
       display: 'flex',
@@ -175,11 +178,12 @@ export default function Profile() {
       marginBottom: '12px',
     },
     input: {
-      border: '1px solid rgba(148, 163, 184, 0.25)',
+      border: '1px solid rgba(148, 163, 184, 0.26)',
       borderRadius: '10px',
       padding: '10px 12px',
       background: '#020617',
       color: '#f8fafc',
+      outline: 'none',
     },
     button: {
       border: 'none',
@@ -195,7 +199,7 @@ export default function Profile() {
     secondaryButton: {
       background: 'transparent',
       color: '#f8fafc',
-      border: '1px solid rgba(148, 163, 184, 0.2)',
+      border: '1px solid rgba(148, 163, 184, 0.22)',
     },
     actions: {
       display: 'flex',
@@ -216,9 +220,7 @@ export default function Profile() {
   }
 
   return (
-    <>
-      <Navbar />
-      <main style={styles.page}>
+    <main style={styles.page}>
         <div style={styles.container}>
           <section style={styles.hero}>
             <div style={{ ...styles.card, ...styles.profileCard }}>
@@ -329,6 +331,5 @@ export default function Profile() {
           </section>
         </div>
       </main>
-    </>
   )
 }

@@ -7,6 +7,7 @@
     "start": "node src/server.js",
     "promote-user": "node src/scripts/promoteUser.js",
     "seed-user": "node src/scripts/seedUser.js",
+    "seed-sample-users": "node src/scripts/seedUser.js --count=120",
     "export-users": "node src/scripts/exportUsersJson.js"
   },
   "dependencies": {

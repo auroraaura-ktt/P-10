@@ -36,9 +36,6 @@ export default function TopBar({ setSidebarOpen, darkMode, setDarkMode }) {
         <span onClick={() => setDarkMode(!darkMode)}>
           <FaMoon />
         </span>
-        <div className="profile-avatar" onClick={() => navigate('/profile')}>
-          {initials}
-        </div>
       </div>
     </div>
   )
