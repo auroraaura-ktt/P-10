@@ -24,6 +24,8 @@ export default function Admin() {
   const [createMessage, setCreateMessage] = useState({ type: '', text: '' })
   const [creatingPageAccount, setCreatingPageAccount] = useState(false)
   const [pageAccountMessage, setPageAccountMessage] = useState({ type: '', text: '' })
+  const [pages, setPages] = useState([])
+  const [loadingPages, setLoadingPages] = useState(false)
 
   const [resetPasswordUserId, setResetPasswordUserId] = useState(null)
   const [newPassword, setNewPassword] = useState('')
@@ -54,6 +56,24 @@ export default function Admin() {
       setUsers([])
     } finally {
       setLoadingUsers(false)
+    }
+  }, [token])
+
+  const loadPages = useCallback(async () => {
+    setLoadingPages(true)
+
+    try {
+      const data = await apiRequest('/auth/pages', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      setPages(data.pages || [])
+    } catch (err) {
+      setPages([])
+      setPageAccountMessage({ type: 'error', text: err.message || 'Failed to load pages' })
+    } finally {
+      setLoadingPages(false)
     }
   }, [token])
 
@@ -165,6 +185,7 @@ export default function Admin() {
       })
       setPageFormData({ pageName: '', email: '', password: '' })
       await loadUsers()
+      await loadPages()
     } catch (err) {
       setPageAccountMessage({
         type: 'error',
@@ -233,7 +254,11 @@ export default function Admin() {
     if (activeSection === 'users') {
       loadUsers()
     }
-  }, [activeSection, loadUsers])
+
+    if (activeSection === 'page-accounts') {
+      loadPages()
+    }
+  }, [activeSection, loadUsers, loadPages])
 
   const sidebarItems = [
     { key: 'dashboard', label: '📊 Dashboard' },
@@ -345,7 +370,7 @@ export default function Admin() {
               </p>
             )}
 
-            <form onSubmit={handleCreatePageAccount} className="admin-create-form">
+            <div className="admin-create-form">
               <div className="form-group">
                 <label htmlFor="pageName">Page Name</label>
                 <input
@@ -384,10 +409,34 @@ export default function Admin() {
                 />
               </div>
 
-              <button type="submit" className="form-submit" disabled={creatingPageAccount}>
+              <button type="submit" className="form-submit" disabled={creatingPageAccount} onClick={handleCreatePageAccount}>
                 {creatingPageAccount ? 'Creating account...' : 'Create Page Account'}
               </button>
-            </form>
+            </div>
+
+            <div className="admin-users-table-wrap" style={{ marginTop: '24px' }}>
+              <h3 style={{ marginBottom: '12px' }}>Created Pages</h3>
+              {loadingPages && <p>Loading pages...</p>}
+              {!loadingPages && pages.length === 0 && <p>No pages created yet.</p>}
+              {!loadingPages && pages.length > 0 && (
+                <div className="admin-page-list">
+                  {pages.map((pageItem) => (
+                    <div className="admin-page-card" key={pageItem.id}>
+                      <div>
+                        <h4>{pageItem.pageName}</h4>
+                        <p>{pageItem.email}</p>
+                      </div>
+                      <div className="admin-page-card-actions">
+                        <span className="admin-page-badge">{pageItem.role || 'page'}</span>
+                        <a className="admin-button" href={`/page/${pageItem.slug}`}>
+                          Open Dashboard
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )
       case 'posts':

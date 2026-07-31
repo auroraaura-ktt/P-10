@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { useAuth } from '../context/useAuth'
 import BottomNav from "../components/BottomNav"
 import LeftSidebar from "../components/LeftSidebar"
@@ -40,7 +39,6 @@ export default function Feed() {
             <h2>Welcome back, {user?.username || 'MiitVerse member'}!</h2>
             <p>Check your latest feed posts and manage your account from your profile.</p>
           </div>
-          <Link to="/profile" className="outline-btn">View Profile</Link>
         </section>
 
         <StoriesBar />

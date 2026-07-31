@@ -1,9 +1,13 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/useAuth'
 
 function Navbar() {
   const { user, logout } = useAuth()
+  const location = useLocation()
+
+  const isPublicPage = ['/', '/about', '/contact', '/login', '/register', '/verify', '/admin-login'].includes(location.pathname)
+  const showAuthenticatedLinks = Boolean(user) && !isPublicPage
 
   return (
     <nav className="navbar">
@@ -23,7 +27,7 @@ function Navbar() {
         <li><Link to="/">Home</Link></li>
         <li><Link to="/about">About</Link></li>
         <li><Link to="/contact">Contact Us</Link></li>
-        {user ? (
+        {showAuthenticatedLinks ? (
           <>
             <li><Link to="/feed">Feed</Link></li>
             <li><Link to="/profile">Profile</Link></li>
@@ -36,7 +40,7 @@ function Navbar() {
         )}
       </ul>
 
-      {user ? (
+      {showAuthenticatedLinks ? (
         <button className="join-btn" onClick={logout}>Logout</button>
       ) : (
         <Link className="join-btn" to="/register">Join Us</Link>

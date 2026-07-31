@@ -6,6 +6,8 @@ import { driver } from '../config/neo4j.js'
 import { env } from '../config/env.js'
 import { normalizeEmail, isPageAccountEmail, isValidRegistrationEmail } from '../utils/accountAccess.js'
 import { sendVerificationEmail } from '../utils/emailService.js'
+import { createPageRecord } from '../utils/pagePersistence.js'
+import { persistUserToBothDatabases } from '../utils/userPersistence.js'
 
 const pendingRegistrations = new Map()
 const verificationTtlMs = 15 * 60 * 1000
@@ -247,6 +249,7 @@ export async function createPageAccount(req, res) {
 
     const passwordHash = await bcrypt.hash(password, 10)
     const createdAt = new Date().toISOString()
+    const userId = randomUUID()
     const result = await session.executeWrite((tx) =>
       tx.run(
         `
@@ -262,7 +265,7 @@ export async function createPageAccount(req, res) {
           RETURN user
         `,
         {
-          id: randomUUID(),
+          id: userId,
           username: trimmedUsername,
           email: normalizedEmail,
           passwordHash,
@@ -270,6 +273,25 @@ export async function createPageAccount(req, res) {
         }
       )
     )
+
+    await persistUserToBothDatabases({
+      id: userId,
+      username: trimmedUsername,
+      email: normalizedEmail,
+      passwordHash,
+      role: 'page',
+      verified: true,
+      createdAt,
+    })
+
+    await createPageRecord({
+      id: userId,
+      pageName: trimmedUsername,
+      slug: trimmedUsername,
+      email: normalizedEmail,
+      ownerId: user?.id || userId,
+      description: `Official page for ${trimmedUsername}`,
+    })
 
     return res.status(201).json({
       message: 'Page account created successfully',
@@ -334,6 +356,7 @@ export async function verifyUser(req, res) {
       return res.status(409).json({ message: 'User already exists' })
     }
 
+    const userId = randomUUID()
     const result = await session.executeWrite((tx) =>
       tx.run(
         `
@@ -349,7 +372,7 @@ export async function verifyUser(req, res) {
           RETURN user
         `,
         {
-          id: randomUUID(),
+          id: userId,
           username: pendingRegistration.username,
           email: pendingRegistration.email,
           passwordHash: pendingRegistration.passwordHash,
@@ -359,6 +382,18 @@ export async function verifyUser(req, res) {
     )
 
     pendingRegistrations.delete(normalizedEmail)
+
+    const userData = {
+      id: userId,
+      username: pendingRegistration.username,
+      email: pendingRegistration.email,
+      passwordHash: pendingRegistration.passwordHash,
+      role: 'user',
+      verified: true,
+      createdAt: pendingRegistration.createdAt,
+    }
+
+    await persistUserToBothDatabases(userData)
 
     return res.status(201).json({
       message: 'Email verified. Account created.',

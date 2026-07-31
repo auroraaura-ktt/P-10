@@ -201,6 +201,49 @@
   border-bottom: 1px solid #eee;
 }
 
+.admin-page-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-page-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: #f9fafb;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.admin-page-card h4 {
+  margin: 0 0 4px;
+  color: #111827;
+}
+
+.admin-page-card p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.admin-page-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-page-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 /* RESPONSIVE */
 
 @media (max-width: 1100px) {

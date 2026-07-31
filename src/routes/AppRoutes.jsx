@@ -8,6 +8,7 @@ import ContactUs from '../pages/ContactUs'
 import Feed from '../pages/Feed'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
+import PageDashboard from '../pages/PageDashboard'
 import Profile from '../pages/Profile'
 import Register from '../pages/Register'
 import Verify from '../pages/Verify'
@@ -37,6 +38,14 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify" element={<Verify />} />
+      <Route
+        path="/page/:slug"
+        element={(
+          <ProtectedRoute>
+            <PageDashboard />
+          </ProtectedRoute>
+        )}
+      />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route
         path="/admin"
