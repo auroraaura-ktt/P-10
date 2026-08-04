@@ -12,18 +12,49 @@ export default function Feed() {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
-  const [testPosts, setTestPosts] = useState([])
+  const [posts, setPosts] = useState([])
 
   useEffect(() => {
-    const savedPosts = localStorage.getItem("testPosts");
-    if (savedPosts) {
-      try {
-        setTestPosts(JSON.parse(savedPosts));
-      } catch (err) {
-        console.error("Failed to load test posts:", err);
+    try {
+      const savedPosts = localStorage.getItem("feed-posts")
+      if (savedPosts) {
+        setPosts(JSON.parse(savedPosts))
+        return
       }
+
+      const legacyPosts = localStorage.getItem("testPosts")
+      if (legacyPosts) {
+        setPosts(JSON.parse(legacyPosts))
+        return
+      }
+
+      setPosts([
+        {
+          id: "welcome-post",
+          userId: user?.id || "system",
+          username: "MiitVerse",
+          profilePicture: null,
+          content: "Welcome to the new feed. Start a conversation with your community.",
+          image: null,
+          createdAt: new Date().toISOString(),
+          likes: 0,
+          comments: [],
+          reposts: 0,
+        },
+      ])
+    } catch (error) {
+      console.error("Failed to load feed posts:", error)
+      setPosts([])
     }
-  }, []);
+  }, [user?.id])
+
+  const handleAddPost = (newPost) => {
+    setPosts((currentPosts) => {
+      const nextPosts = [newPost, ...currentPosts]
+      localStorage.setItem("feed-posts", JSON.stringify(nextPosts))
+      return nextPosts
+    })
+  }
 
   return (
     <div className={`feed-layout ${darkMode ? "dark" : ""}`}>
@@ -42,8 +73,8 @@ export default function Feed() {
         </section>
 
         <StoriesBar />
-        <CreatePost />
-        <PostList testPosts={testPosts} />
+        <CreatePost onAddPost={handleAddPost} />
+        <PostList posts={posts} />
       </main>
 
       <RightSidebar />

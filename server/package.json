@@ -17,6 +17,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "minimatch": "^10.2.6",
     "mongodb": "^7.5.0",
     "mongoose": "^9.9.0",
     "neo4j-driver": "^6.0.0"

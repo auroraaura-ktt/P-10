@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { FaCamera, FaNewspaper, FaCode, FaVideo, FaPaperPlane } from "react-icons/fa";
 import { useAuth } from "../context/useAuth";
 
-export default function CreatePost() {
+const MAX_POST_LENGTH = 280;
+
+export default function CreatePost({ onAddPost }) {
   const { user } = useAuth();
   const [videoOpen, setVideoOpen] = useState(false);
   const [streamError, setStreamError] = useState(null);
+  const [content, setContent] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -14,6 +18,7 @@ export default function CreatePost() {
         .split(" ")
         .map((part) => part[0]?.toUpperCase())
         .join("")
+        .slice(0, 2)
     : "U";
 
   useEffect(() => {
@@ -54,11 +59,58 @@ export default function CreatePost() {
     }
   }
 
+  function handlePostSubmit(event) {
+    event.preventDefault();
+
+    const trimmedContent = content.trim();
+
+    if (!trimmedContent) {
+      setErrorMessage("Please write something before posting.");
+      return;
+    }
+
+    if (trimmedContent.length > MAX_POST_LENGTH) {
+      setErrorMessage(`Posts must be ${MAX_POST_LENGTH} characters or less.`);
+      return;
+    }
+
+    const newPost = {
+      id: Date.now(),
+      userId: user?.id || "guest",
+      username: user?.username || "MiitVerse member",
+      profilePicture: user?.profilePicture || null,
+      content: trimmedContent,
+      image: null,
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      comments: [],
+      reposts: 0,
+    };
+
+    if (typeof onAddPost === "function") {
+      onAddPost(newPost);
+    }
+
+    setContent("");
+    setErrorMessage("");
+  }
+
   return (
-    <div className="create-post">
+    <form className="create-post" onSubmit={handlePostSubmit}>
       <div className="create-post-top">
         <div className="profile-avatar-small">{initials}</div>
-        <input placeholder="What’s on your mind?" />
+        <textarea
+          value={content}
+          onChange={(event) => {
+            setContent(event.target.value)
+            if (errorMessage) {
+              setErrorMessage("")
+            }
+          }}
+          placeholder="What’s on your mind?"
+          rows={4}
+          maxLength={MAX_POST_LENGTH}
+        />
       </div>
 
       {videoOpen && (
@@ -71,6 +123,11 @@ export default function CreatePost() {
       )}
 
       {streamError && <p className="stream-error">{streamError}</p>}
+
+      <div className="create-post-footer">
+        <span className="create-post-counter">{content.trim().length}/{MAX_POST_LENGTH}</span>
+        {errorMessage && <span className="create-post-error">{errorMessage}</span>}
+      </div>
 
       <div className="create-post-actions">
         <span>
@@ -85,10 +142,10 @@ export default function CreatePost() {
         <span className="video-trigger" onClick={handleOpenVideo}>
           <FaVideo /> Video
         </span>
-        <button type="button">
+        <button type="submit">
           <FaPaperPlane /> Post
         </button>
       </div>
-    </div>
+    </form>
   );
 }

@@ -1,22 +1,15 @@
 import PostCard from "./PostCard";
 
-export default function PostList({ testPosts = [] }) {
-  return (
-    <>
-      {testPosts.length > 0 && (
-        <>
-          <div className="post-list-note">
-            📝 {testPosts.length} Test Post{testPosts.length !== 1 ? "s" : ""} from Admin
-          </div>
-          {testPosts.map((post) => (
-            <PostCard key={post.id} post={{ ...post, verified: true }} />
-          ))}
-        </>
-      )}
+export default function PostList({ posts = [] }) {
+  if (posts.length === 0) {
+    return <div className="post-list-empty">No posts yet. Start the conversation.</div>;
+  }
 
-      <PostCard />
-      <PostCard />
-      <PostCard />
-    </>
+  return (
+    <div className="post-list">
+      {posts.map((post) => (
+        <PostCard key={post.id} post={{ ...post, verified: true }} />
+      ))}
+    </div>
   );
 }
