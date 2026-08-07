@@ -1,29 +1,34 @@
-export default function RightSidebar() {
+export default function RightSidebar({ following = [], onFollowToggle = () => {} }) {
+  const suggestedUsers = [
+    { id: "aung", username: "Aung" },
+    { id: "sara", username: "Sara" },
+    { id: "mike", username: "Mike" },
+  ];
+
   return (
     <aside className="right-sidebar">
       <div className="widget">
         <div className="widget-header">
-          <h3>New Followers</h3>
+          <h3>Follow Friends</h3>
           <a href="#">View All</a>
         </div>
 
-        <div className="follow-item">
-          <div className="follow-avatar">A</div>
-          <div>
-            <h4>Aung</h4>
-            <p>@aung</p>
-          </div>
-          <button>Follow</button>
-        </div>
+        {suggestedUsers.map((user) => {
+          const isFollowing = following.some((entry) => (entry?.id ?? entry?.userId ?? entry?.username) === user.id);
 
-        <div className="follow-item">
-          <div className="follow-avatar">S</div>
-          <div>
-            <h4>Sara</h4>
-            <p>@sara</p>
-          </div>
-          <button>Follow</button>
-        </div>
+          return (
+            <div className="follow-item" key={user.id}>
+              <div className="follow-avatar">{user.username.charAt(0)}</div>
+              <div>
+                <h4>{user.username}</h4>
+                <p>@{user.id}</p>
+              </div>
+              <button type="button" onClick={() => onFollowToggle(user)}>
+                {isFollowing ? "Following" : "Follow"}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="widget">

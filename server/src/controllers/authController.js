@@ -8,6 +8,7 @@ import { normalizeEmail, isPageAccountEmail, isValidRegistrationEmail } from '..
 import { sendVerificationEmail } from '../utils/emailService.js'
 import { createPageRecord } from '../utils/pagePersistence.js'
 import { persistUserToBothDatabases } from '../utils/userPersistence.js'
+import { buildPageAccountPayload } from '../utils/authAccountHelpers.js'
 
 const pendingRegistrations = new Map()
 const verificationTtlMs = 15 * 60 * 1000
@@ -217,14 +218,13 @@ export async function resendVerificationCode(req, res) {
 
 export async function createPageAccount(req, res) {
   const { username, email, password, pageName } = req.body || {}
-  const trimmedUsername = (username || pageName)?.trim()
-  const normalizedEmail = normalizeEmail(email)
+  const accountPayload = buildPageAccountPayload({ username, email, password, pageName })
 
-  if (!trimmedUsername || !normalizedEmail || !password) {
+  if (!accountPayload.username || !accountPayload.email || !accountPayload.password) {
     return res.status(400).json({ message: 'username, email, and password are required' })
   }
 
-  if (!isPageAccountEmail(normalizedEmail)) {
+  if (!isPageAccountEmail(accountPayload.email)) {
     return res.status(400).json({ message: 'Page accounts must use an @miit.edu.mm email address.' })
   }
 
@@ -239,7 +239,7 @@ export async function createPageAccount(req, res) {
           RETURN user
           LIMIT 1
         `,
-        { email: normalizedEmail, username: trimmedUsername }
+        { email: accountPayload.email, username: accountPayload.username }
       )
     )
 
@@ -247,7 +247,7 @@ export async function createPageAccount(req, res) {
       return res.status(409).json({ message: 'Page account already exists' })
     }
 
-    const passwordHash = await bcrypt.hash(password, 10)
+    const passwordHash = await bcrypt.hash(accountPayload.password, 10)
     const createdAt = new Date().toISOString()
     const userId = randomUUID()
     const result = await session.executeWrite((tx) =>
@@ -266,8 +266,8 @@ export async function createPageAccount(req, res) {
         `,
         {
           id: userId,
-          username: trimmedUsername,
-          email: normalizedEmail,
+          username: accountPayload.username,
+          email: accountPayload.email,
           passwordHash,
           createdAt,
         }
@@ -276,8 +276,8 @@ export async function createPageAccount(req, res) {
 
     await persistUserToBothDatabases({
       id: userId,
-      username: trimmedUsername,
-      email: normalizedEmail,
+      username: accountPayload.username,
+      email: accountPayload.email,
       passwordHash,
       role: 'page',
       verified: true,
@@ -286,15 +286,15 @@ export async function createPageAccount(req, res) {
 
     await createPageRecord({
       id: userId,
-      pageName: trimmedUsername,
-      slug: trimmedUsername,
-      email: normalizedEmail,
-      ownerId: user?.id || userId,
-      description: `Official page for ${trimmedUsername}`,
+      pageName: accountPayload.pageName || accountPayload.username,
+      slug: accountPayload.slug || accountPayload.username,
+      email: accountPayload.email,
+      ownerId: userId,
+      description: `Official page for ${accountPayload.pageName || accountPayload.username}`,
     })
 
     return res.status(201).json({
-      message: 'Page account created successfully',
+      message: 'Page account created successfully. It can sign in with its email and password.',
       user: serializeUser(result.records[0]),
     })
   } catch (error) {

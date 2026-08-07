@@ -8,7 +8,13 @@ export function isValidRegistrationEmail(email) {
 }
 
 export function isPageAccountEmail(email) {
-  return isValidRegistrationEmail(email)
+  const normalizedEmail = normalizeEmail(email)
+
+  if (!normalizedEmail) {
+    return false
+  }
+
+  return isValidRegistrationEmail(normalizedEmail) || normalizedEmail.includes('@')
 }
 
 export function requiresEmailVerification(email, isPageAccount) {

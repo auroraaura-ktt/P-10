@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sample-public-3",
+    "userId": "sara",
+    "username": "Sara",
+    "content": "Public posts make it easy to discover fresh conversations from the wider community.",
+    "image": null,
+    "createdAt": "2026-08-07T06:31:25.037Z",
+    "likes": 9,
+    "comments": [],
+    "reposts": 2,
+    "visibility": "public"
+  },
+  {
+    "id": "sample-public-2",
+    "userId": "aung",
+    "username": "Aung",
+    "content": "New creators are joining every day. Follow the people you want to see more from.",
+    "image": null,
+    "createdAt": "2026-08-07T06:31:25.037Z",
+    "likes": 11,
+    "comments": [],
+    "reposts": 1,
+    "visibility": "public"
+  },
+  {
+    "id": "sample-public-1",
+    "userId": "miitverse",
+    "username": "MiitVerse",
+    "content": "Welcome to the public community feed. Share updates, stories, and ideas with everyone.",
+    "image": null,
+    "createdAt": "2026-08-07T06:31:25.036Z",
+    "likes": 18,
+    "comments": [],
+    "reposts": 3,
+    "visibility": "public"
+  }
+]

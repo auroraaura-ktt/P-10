@@ -5,6 +5,7 @@ import express from 'express'
 
 import authRoutes from './routes/authRoutes.js'
 import userRoutes from './routes/userRoutes.js'
+import socialRoutes from './routes/socialRoutes.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -30,6 +31,7 @@ app.get('/api', (req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/social', socialRoutes)
 
 // Serve frontend build assets
 app.use(express.static(staticPath))

@@ -8,7 +8,8 @@
     "promote-user": "node src/scripts/promoteUser.js",
     "seed-user": "node src/scripts/seedUser.js",
     "seed-sample-users": "node src/scripts/seedUser.js --count=120",
-    "export-users": "node src/scripts/exportUsersJson.js"
+    "export-users": "node src/scripts/exportUsersJson.js",
+    "seed-social-posts": "node src/scripts/seedSocialPosts.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.0",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "vite": "^8.2.0"
   }
 }

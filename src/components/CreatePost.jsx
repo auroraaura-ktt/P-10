@@ -85,6 +85,7 @@ export default function CreatePost({ onAddPost }) {
       likes: 0,
       comments: [],
       reposts: 0,
+      visibility: "public",
     };
 
     if (typeof onAddPost === "function") {

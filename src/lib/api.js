@@ -1,7 +1,26 @@
+function getStoredAuthToken() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem('miitverse-auth')
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw)
+    return parsed?.token || null
+  } catch {
+    return null
+  }
+}
+
 export async function apiRequest(path, options = {}) {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
   const timeoutMs = options.timeout ?? 15000
-  const { timeout, signal, ...fetchOptions } = options
+  const { timeout, signal, headers: requestHeaders, ...fetchOptions } = options
+  const authToken = getStoredAuthToken()
 
   const url = (() => {
     if (/^https?:\/\//i.test(path)) {
@@ -18,16 +37,21 @@ export async function apiRequest(path, options = {}) {
   const abortSignal = signal || controller.signal
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
+  const headers = new Headers(requestHeaders || {})
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (!headers.has('Authorization') && authToken) {
+    headers.set('Authorization', `Bearer ${authToken}`)
+  }
+
   let response
 
   try {
     response = await fetch(url, {
       signal: abortSignal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(fetchOptions.headers || {}),
-      },
       ...fetchOptions,
+      headers,
     })
   } catch (error) {
     if (error.name === 'AbortError') {
