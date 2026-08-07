@@ -59,6 +59,38 @@ export function listSocialPosts(currentUserId = null, following = []) {
   return getVisiblePosts(posts, currentUserId, following);
 }
 
+export function listAllSocialPosts() {
+  return readJson(postsFile, []);
+}
+
+export function listSocialPostsByUserId(userId) {
+  if (!userId) return [];
+  const posts = readJson(postsFile, []);
+  return (posts || []).filter((p) => p && (p.userId === userId || p.userId === String(userId)));
+}
+
+export function deleteSocialPostById(postId) {
+  if (!postId) return false;
+  const posts = readJson(postsFile, []);
+  const updated = (posts || []).filter((p) => p && p.id !== postId);
+  writeJson(postsFile, updated);
+  return true;
+}
+
+export function updateSocialPostById(postId, patch = {}) {
+  if (!postId) return null;
+  const posts = readJson(postsFile, []);
+  let changed = null;
+  const updated = (posts || []).map((p) => {
+    if (!p || p.id !== postId) return p;
+    const next = { ...p, ...patch };
+    changed = next;
+    return next;
+  });
+  writeJson(postsFile, updated);
+  return changed;
+}
+
 export function createSocialPost(post) {
   const posts = readJson(postsFile, []);
   const nextPost = {

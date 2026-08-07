@@ -8,7 +8,7 @@ test('normalizes email addresses to lowercase', () => {
 })
 
 test('detects reserved page-account email domains', () => {
-  assert.equal(isPageAccountEmail('blueprint@miit.edu.mm'), true)
+  assert.equal(isPageAccountEmail('blueprint@miitverse.com'), true)
   assert.equal(isPageAccountEmail('blueprint@example.com'), false)
 })
 

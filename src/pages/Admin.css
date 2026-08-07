@@ -590,3 +590,29 @@
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+.admin-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-post-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.admin-post-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-post-row img {
+  border-radius: 8px;
+}

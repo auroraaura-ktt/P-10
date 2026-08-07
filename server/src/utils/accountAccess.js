@@ -14,7 +14,7 @@ export function isPageAccountEmail(email) {
     return false
   }
 
-  return isValidRegistrationEmail(normalizedEmail) || normalizedEmail.includes('@')
+  return normalizedEmail.endsWith('@miitverse.com')
 }
 
 export function requiresEmailVerification(email, isPageAccount) {

@@ -39,6 +39,9 @@ export default function Admin() {
   })
   const [creatingTestPost, setCreatingTestPost] = useState(false)
   const [testPostMessage, setTestPostMessage] = useState({ type: '', text: '' })
+  const [postsList, setPostsList] = useState([])
+  const [loadingPosts, setLoadingPosts] = useState(false)
+  const [postsFilter, setPostsFilter] = useState('all') // all | user | page | suspended
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -248,6 +251,75 @@ export default function Admin() {
     }
   }
 
+  async function loadAllPosts() {
+    setLoadingPosts(true)
+    try {
+      // fetch all posts from server (admin-only)
+      const data = await apiRequest('/social/posts/all', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const fetchedPages = await (async () => {
+        try {
+          const pagesData = await apiRequest('/auth/pages', { headers: { Authorization: `Bearer ${token}` } })
+          return pagesData.pages || []
+        } catch (e) {
+          return pages || []
+        }
+      })()
+
+      const posts = (data.posts || []).map((p) => {
+        const matchedPage = (fetchedPages || []).find((pg) => pg.id === p.userId)
+        const isPage = Boolean(matchedPage)
+        return {
+          ...p,
+          source: isPage ? 'page' : 'user',
+          author: p.username || p.author || 'User',
+          pageName: matchedPage?.pageName || null,
+        }
+      })
+
+      setPostsList(posts)
+    } catch (err) {
+      setPostsList([])
+    } finally {
+      setLoadingPosts(false)
+    }
+  }
+
+  const handleDeletePost = (post) => {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return
+
+    ;(async () => {
+      try {
+        await apiRequest(`/social/posts/${encodeURIComponent(post.id)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        await loadAllPosts()
+      } catch (err) {
+        setError(err.message || 'Failed to delete post')
+      }
+    })()
+  }
+
+  const handleToggleSuspend = (post) => {
+    const toggle = !post.suspended
+
+    ;(async () => {
+      try {
+        await apiRequest(`/social/posts/${encodeURIComponent(post.id)}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ suspended: toggle }),
+        })
+        await loadAllPosts()
+      } catch (err) {
+        setError(err.message || 'Failed to update post')
+      }
+    })()
+  }
+
   const newestUsers = users.slice(0, 4)
 
   useEffect(() => {
@@ -257,6 +329,9 @@ export default function Admin() {
 
     if (activeSection === 'page-accounts') {
       loadPages()
+    }
+    if (activeSection === 'posts') {
+      loadAllPosts()
     }
   }, [activeSection, loadUsers, loadPages])
 
@@ -361,7 +436,7 @@ export default function Admin() {
           <section id="page-accounts" className="admin-page-accounts">
             <div className="admin-create-header">
               <h2>Create Page Account</h2>
-              <p>Create a special MIIT page account with a virtual @miit.edu.mm identity. These accounts do not require a real inbox and can be used like regular signed-in accounts.</p>
+              <p>Create a special MIIT page account with a virtual @miitverse.com identity. These accounts do not require a real inbox and can be used like regular signed-in accounts.</p>
             </div>
 
             {pageAccountMessage.text && (
@@ -392,7 +467,7 @@ export default function Admin() {
                   name="email"
                   value={pageFormData.email}
                   onChange={handlePageFormChange}
-                  placeholder="page@miit.edu.mm"
+                  placeholder="page@miitverse.com"
                   required
                 />
               </div>
@@ -443,58 +518,50 @@ export default function Admin() {
         return (
           <section id="posts" className="admin-page-accounts">
             <div className="admin-create-header">
-              <h2>Create Test Post</h2>
-              <p>Create test posts to view and test post display in the Feed page. These posts will be stored locally and display in the Feed.</p>
+              <h2>Posts Management</h2>
+              <p>Review posts created by users and page accounts. You can delete or suspend posts from here.</p>
             </div>
 
-            {testPostMessage.text && (
-              <p className={`message message-${testPostMessage.type}`}>
-                {testPostMessage.text}
-              </p>
+            <div style={{ marginBottom: '12px' }}>
+              <button type="button" className={`admin-nav-item ${postsFilter === 'all' ? 'active' : ''}`} onClick={() => setPostsFilter('all')}>All</button>
+              <button type="button" className={`admin-nav-item ${postsFilter === 'user' ? 'active' : ''}`} onClick={() => setPostsFilter('user')} style={{ marginLeft: '8px' }}>User Posts</button>
+              <button type="button" className={`admin-nav-item ${postsFilter === 'page' ? 'active' : ''}`} onClick={() => setPostsFilter('page')} style={{ marginLeft: '8px' }}>Page Posts</button>
+              <button type="button" className={`admin-nav-item ${postsFilter === 'suspended' ? 'active' : ''}`} onClick={() => setPostsFilter('suspended')} style={{ marginLeft: '8px' }}>Suspended</button>
+              <button type="button" onClick={() => loadAllPosts()} style={{ marginLeft: '12px' }}>Refresh</button>
+            </div>
+
+            {loadingPosts && <p>Loading posts...</p>}
+
+            {!loadingPosts && postsList.length === 0 && (
+              <p>No posts found in local storage.</p>
             )}
 
-            <form onSubmit={handleCreateTestPost} className="admin-create-form">
-              <div className="form-group">
-                <label htmlFor="testAuthor">Author Name (Optional)</label>
-                <input
-                  type="text"
-                  id="testAuthor"
-                  name="author"
-                  value={testPostData.author}
-                  onChange={handleTestPostChange}
-                  placeholder="Enter author name or leave blank for 'Test User'"
-                />
+            {!loadingPosts && postsList.length > 0 && (
+              <div className="admin-posts-list">
+                {postsList.filter((p) => {
+                  if (postsFilter === 'all') return true
+                  if (postsFilter === 'user') return p.source === 'user'
+                  if (postsFilter === 'page') return p.source === 'page'
+                  if (postsFilter === 'suspended') return p.suspended
+                  return true
+                }).map((post) => (
+                  <div key={post.id} className="admin-post-row">
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <strong>{post.source === 'page' ? `${post.pageName} (page)` : post.author}</strong>
+                        <small>{post.createdAt ? new Date(post.createdAt).toLocaleString() : ''}</small>
+                      </div>
+                      <p style={{ marginTop: '6px' }}>{post.content}</p>
+                      {post.image ? <img src={post.image} alt="post" style={{ maxWidth: '240px', marginTop: '6px' }} /> : null}
+                    </div>
+                    <div className="admin-post-actions">
+                      <button type="button" className="admin-delete-btn" onClick={() => handleDeletePost(post)}>Delete</button>
+                      <button type="button" className="admin-reset-btn" onClick={() => handleToggleSuspend(post)}>{post.suspended ? 'Unsuspend' : 'Suspend'}</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <div className="form-group">
-                <label htmlFor="testContent">Post Content</label>
-                <textarea
-                  id="testContent"
-                  name="content"
-                  value={testPostData.content}
-                  onChange={handleTestPostChange}
-                  placeholder="What's on your mind?"
-                  rows="6"
-                  required
-                ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="testImage">Image URL (Optional)</label>
-                <input
-                  type="url"
-                  id="testImage"
-                  name="image"
-                  value={testPostData.image}
-                  onChange={handleTestPostChange}
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-
-              <button type="submit" className="form-submit" disabled={creatingTestPost}>
-                {creatingTestPost ? 'Creating post...' : 'Create Test Post'}
-              </button>
-            </form>
+            )}
           </section>
         )
       case 'events':

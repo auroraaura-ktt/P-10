@@ -19,7 +19,8 @@ export default function AdminLogin() {
     setLoading(true)
 
     try {
-      const user = await login(form)
+      const data = await login(form)
+      const user = data.user
 
       if (canUseUserLogin(user.role)) {
         setError('This account is not allowed to access admin.')

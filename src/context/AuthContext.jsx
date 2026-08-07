@@ -78,7 +78,7 @@ export function AuthProvider({ children }) {
         })
 
         setAuth({ token: data.token, user: data.user })
-        return data.user
+        return data
       },
       register: async (payload) => {
         const data = await apiRequest('/auth/register', {

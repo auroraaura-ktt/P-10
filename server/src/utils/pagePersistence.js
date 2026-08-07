@@ -30,30 +30,46 @@ export function normalizePageSlug(value = '') {
 export async function createPageRecord(pageData = {}) {
   const pageName = String(pageData.pageName || '').trim()
   const email = String(pageData.email || '').trim().toLowerCase()
-  const slug = normalizePageSlug(pageData.slug || pageName)
+  const baseSlug = normalizePageSlug(pageData.slug || pageName || (email.split('@')[0] || 'page'))
 
-  if (!pageName || !email || !slug) {
+  if (!pageName || !email || !baseSlug) {
     throw new Error('Page name, email, and slug are required')
   }
 
-  const document = {
-    id: pageData.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    pageName,
-    slug,
-    email,
-    role: 'page',
-    verified: true,
-    ownerId: pageData.ownerId || '',
-    description: pageData.description || '',
-    coverImage: pageData.coverImage || '',
-    posts: Array.isArray(pageData.posts) ? pageData.posts : [],
-  }
+  let slug = baseSlug
+  let attempt = 0
 
-  return PageModel.findOneAndUpdate(
-    { email },
-    { $setOnInsert: document, $set: { pageName, slug, description: document.description, coverImage: document.coverImage, role: 'page' } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  ).lean()
+  while (true) {
+    const document = {
+      id: pageData.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      pageName,
+      slug,
+      email,
+      role: 'page',
+      verified: true,
+      ownerId: pageData.ownerId || '',
+      description: pageData.description || '',
+      coverImage: pageData.coverImage || '',
+      posts: Array.isArray(pageData.posts) ? pageData.posts : [],
+    }
+
+    try {
+      return await PageModel.findOneAndUpdate(
+        { email },
+        { $setOnInsert: document, $set: { description: document.description, coverImage: document.coverImage, role: 'page' } },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+      ).lean()
+    } catch (error) {
+      const isDuplicateSlug = error?.code === 11000 && (error.keyPattern?.slug || String(error.message).includes('slug'))
+
+      if (!isDuplicateSlug || attempt >= 4) {
+        throw error
+      }
+
+      attempt += 1
+      slug = `${baseSlug}-${attempt}`
+    }
+  }
 }
 
 export async function listPageRecords() {
@@ -62,4 +78,9 @@ export async function listPageRecords() {
 
 export async function getPageRecordBySlug(slug) {
   return PageModel.findOne({ slug: normalizePageSlug(slug) }).lean()
+}
+
+export async function getPageRecordByOwner(ownerId) {
+  if (!ownerId) return null
+  return PageModel.findOne({ ownerId: String(ownerId) }).lean()
 }

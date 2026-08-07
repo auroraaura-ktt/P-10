@@ -32,6 +32,6 @@ test('buildPageAccountPayload uses an explicit username when provided', () => {
 
 test('page accounts accept virtual-domain emails while normal registration stays school-domain only', () => {
   assert.equal(isPageAccountEmail('miitverse@miitverse.com'), true);
-  assert.equal(isPageAccountEmail('news@miit.edu.mm'), true);
+  assert.equal(isPageAccountEmail('news@miit.edu.mm'), false);
   assert.equal(isValidRegistrationEmail('miitverse@miitverse.com'), false);
 });

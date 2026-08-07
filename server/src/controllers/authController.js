@@ -6,7 +6,7 @@ import { driver } from '../config/neo4j.js'
 import { env } from '../config/env.js'
 import { normalizeEmail, isPageAccountEmail, isValidRegistrationEmail } from '../utils/accountAccess.js'
 import { sendVerificationEmail } from '../utils/emailService.js'
-import { createPageRecord } from '../utils/pagePersistence.js'
+import { createPageRecord, getPageRecordByOwner as getPageRecordByOwnerFromPersistence } from '../utils/pagePersistence.js'
 import { persistUserToBothDatabases } from '../utils/userPersistence.js'
 import { buildPageAccountPayload } from '../utils/authAccountHelpers.js'
 
@@ -225,7 +225,7 @@ export async function createPageAccount(req, res) {
   }
 
   if (!isPageAccountEmail(accountPayload.email)) {
-    return res.status(400).json({ message: 'Page accounts must use an @miit.edu.mm email address.' })
+    return res.status(400).json({ message: 'Page accounts must use an @miitverse.com email address.' })
   }
 
   const session = driver.session()
@@ -407,6 +407,47 @@ export async function verifyUser(req, res) {
   }
 }
 
+export async function buildLoginResponseUser(
+  user,
+  getPageRecordByOwnerFn = getPageRecordByOwnerFromPersistence,
+  createPageRecordFn = createPageRecord
+) {
+  const responseUser = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  }
+
+  if (user.role === 'page') {
+    let pageRecord = await getPageRecordByOwnerFn(user.id)
+
+    if (!pageRecord) {
+      const fallbackPageName = String(user.username || user.email || '').trim() || 'page'
+      const fallbackSlug = String(user.username || fallbackPageName)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+
+      pageRecord = await createPageRecordFn({
+        id: user.id,
+        pageName: fallbackPageName,
+        slug: fallbackSlug,
+        email: user.email,
+        ownerId: user.id,
+        description: `Official page for ${fallbackPageName}`,
+      })
+    }
+
+    if (pageRecord?.slug) {
+      responseUser.pageSlug = pageRecord.slug
+    }
+  }
+
+  return responseUser
+}
+
 export async function loginUser(req, res) {
   const { email, password } = req.body || {}
   const normalizedEmail = normalizeEmail(email)
@@ -449,15 +490,12 @@ export async function loginUser(req, res) {
       { expiresIn: '7d' }
     )
 
+    const responseUser = await buildLoginResponseUser(user)
+
     return res.json({
       message: 'Login successful',
       token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: responseUser,
     })
   } catch {
     return res.status(500).json({ message: 'Login failed' })

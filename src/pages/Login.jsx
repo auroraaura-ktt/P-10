@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/useAuth'
+import { apiRequest } from '../lib/api'
 import { canUseUserLogin } from '../lib/authAccess'
 import '../styles/AuthDesign.css'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
@@ -18,14 +20,51 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const user = await login(form)
+      const data = await login(form)
+      const user = data.user
 
       if (!canUseUserLogin(user.role)) {
         setError('This account is for admin access. Please use the admin login page.')
         return
       }
+      // If this is a page account, redirect to its page dashboard
+      if (user.role === 'page') {
+        const normalizeSlug = (value = '') =>
+          String(value)
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
 
-      navigate('/feed')
+        // Redirect page accounts directly to their own dashboard
+        if (user.pageSlug) {
+          navigate(`/page/${encodeURIComponent(user.pageSlug)}`, { replace: true })
+          return
+        }
+
+        // Fallback to owner lookup if slug wasn't included in login response
+        try {
+          const pageData = await apiRequest(`/auth/pages/owner/${encodeURIComponent(user.id)}`, {
+            headers: { Authorization: `Bearer ${data.token}` },
+          })
+
+          if (pageData?.page?.slug) {
+            navigate(`/page/${encodeURIComponent(pageData.page.slug)}`, { replace: true })
+            return
+          }
+        } catch (e) {
+          // fallback to inferred slug
+        }
+
+        const fallbackSlug = normalizeSlug(user.username || (user.email || '').split('@')[0])
+        if (fallbackSlug) {
+          navigate(`/page/${encodeURIComponent(fallbackSlug)}`, { replace: true })
+          return
+        }
+      }
+
+      const destination = location.state?.from?.pathname || '/feed'
+      navigate(destination, { replace: true })
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {

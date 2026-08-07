@@ -15,6 +15,8 @@ export default function PageDashboard() {
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const [message, setMessage] = useState('')
+  const [imagePreview, setImagePreview] = useState(null)
+  const [imageError, setImageError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -51,15 +53,37 @@ export default function PageDashboard() {
   }, [slug, token])
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`page-posts-${slug}`)
-      if (saved) {
-        setPosts(normalizePagePosts(JSON.parse(saved)))
+    let active = true
+
+    async function loadPosts() {
+      setLoading(true)
+      try {
+        if (!page?.id) {
+          setPosts([])
+          return
+        }
+
+        const data = await apiRequest(`/social/posts?userId=${encodeURIComponent(page.id)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (active) {
+          setPosts(normalizePagePosts(data.posts || []))
+        }
+      } catch (e) {
+        if (active) setPosts([])
+      } finally {
+        if (active) setLoading(false)
       }
-    } catch {
-      setPosts([])
     }
-  }, [slug])
+
+    loadPosts()
+    return () => {
+      active = false
+    }
+  }, [page?.id, token, slug])
 
   const pageTitle = useMemo(() => page?.pageName || 'Page Dashboard', [page])
 
@@ -67,23 +91,69 @@ export default function PageDashboard() {
     event.preventDefault()
     const trimmed = draft.trim()
 
-    if (!trimmed) {
-      setMessage('Write something before publishing to the page.')
+    if (!trimmed && !imagePreview) {
+      setMessage('Write something or attach an image before publishing to the page.')
+      return
+    }
+    ;(async () => {
+      setPosting(true)
+      try {
+        const body = {
+          content: trimmed,
+          image: imagePreview || null,
+        }
+
+        const data = await apiRequest('/social/posts', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        })
+
+        const nextPost = buildPagePost({
+          ...data.post,
+        })
+
+        const nextPosts = normalizePagePosts([nextPost, ...posts])
+        setPosts(nextPosts)
+        setDraft('')
+        setImagePreview(null)
+        setImageError('')
+        setMessage('Post published to the page feed.')
+      } catch (err) {
+        setMessage(err.message || 'Failed to publish post')
+      } finally {
+        setPosting(false)
+      }
+    })()
+  }
+
+  const handleImageChange = (event) => {
+    setImageError('')
+    const file = event.target.files && event.target.files[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setImageError('Only image files are allowed')
       return
     }
 
-    const nextPost = buildPagePost({
-      slug,
-      userId: page?.id || user?.id || 'page',
-      authorName: page?.pageName || user?.username || 'Page',
-      content: trimmed,
-    })
+    // limit to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be 5MB or smaller')
+      return
+    }
 
-    const nextPosts = normalizePagePosts([nextPost, ...posts])
-    setPosts(nextPosts)
-    localStorage.setItem(`page-posts-${slug}`, JSON.stringify(nextPosts))
-    setDraft('')
-    setMessage('Post published to the page feed.')
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImagePreview(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveImage = () => {
+    setImagePreview(null)
+    setImageError('')
+    // reset file input value if needed — handled by uncontrolled input change
   }
 
   if (loading) {
@@ -141,6 +211,29 @@ export default function PageDashboard() {
             placeholder={`Write something for ${pageTitle}`}
           />
 
+          <div style={{ marginTop: '8px' }}>
+            <label htmlFor="pageImage">Attach image (optional)</label>
+            <input
+              id="pageImage"
+              name="pageImage"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                handleImageChange(e)
+                if (message) setMessage('')
+              }}
+            />
+            {imageError ? <p className="message message-error">{imageError}</p> : null}
+            {imagePreview ? (
+              <div style={{ marginTop: '8px' }}>
+                <img src={imagePreview} alt="preview" style={{ maxWidth: '100%', maxHeight: '240px' }} />
+                <div>
+                  <button type="button" onClick={handleRemoveImage} style={{ marginTop: '6px' }}>Remove image</button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <button type="submit" disabled={posting}>
             {posting ? 'Publishing...' : 'Publish Post'}
           </button>
@@ -161,6 +254,7 @@ export default function PageDashboard() {
             <div key={post.id} className="admin-create-form" style={{ marginTop: '12px' }}>
               <p><strong>{pageTitle}</strong></p>
               <p>{post.content}</p>
+              {post.image ? <img src={post.image} alt="post" style={{ maxWidth: '100%', marginTop: '8px' }} /> : null}
               <small>{new Date(post.createdAt).toLocaleString()}</small>
             </div>
           ))

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
 import { createPageAccount, loginUser, registerUser, resendVerificationCode, verifyUser } from '../controllers/authController.js'
-import { getPageRecordBySlug, listPageRecords } from '../utils/pagePersistence.js'
+import { getPageRecordBySlug, getPageRecordByOwner, listPageRecords } from '../utils/pagePersistence.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
 
@@ -21,6 +21,18 @@ router.get('/pages', authMiddleware, requireRole('admin'), async (req, res) => {
     res.json({ pages })
   } catch (error) {
     res.status(500).json({ message: error.message || 'Failed to load pages' })
+  }
+})
+router.get('/pages/owner/:ownerId', authMiddleware, async (req, res) => {
+  try {
+    const page = await getPageRecordByOwner(req.params.ownerId)
+    if (!page) {
+      return res.status(404).json({ message: 'Page not found' })
+    }
+
+    res.json({ page })
+  } catch (error) {
+    res.status(500).json({ message: error.message || 'Failed to load page' })
   }
 })
 router.get('/pages/:slug', authMiddleware, async (req, res) => {
