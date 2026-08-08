@@ -10,6 +10,8 @@ export default function CreatePost({ onAddPost }) {
   const [streamError, setStreamError] = useState(null);
   const [content, setContent] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -59,12 +61,22 @@ export default function CreatePost({ onAddPost }) {
     }
   }
 
+  function handleImageSelect(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImage(file);
+    setImagePreview(previewUrl);
+    setErrorMessage("");
+  }
+
   function handlePostSubmit(event) {
     event.preventDefault();
 
     const trimmedContent = content.trim();
 
-    if (!trimmedContent) {
+    if (!trimmedContent && !selectedImage) {
       setErrorMessage("Please write something before posting.");
       return;
     }
@@ -90,6 +102,7 @@ export default function CreatePost({ onAddPost }) {
       profilePicture: user?.profilePicture || null,
       content: trimmedContent,
       image: null,
+      imageFile: selectedImage || null,
       createdAt: new Date().toISOString(),
       likes: 0,
       comments: [],
@@ -103,6 +116,8 @@ export default function CreatePost({ onAddPost }) {
 
     setContent("");
     setErrorMessage("");
+    setSelectedImage(null);
+    setImagePreview("");
   }
 
   return (
@@ -134,15 +149,28 @@ export default function CreatePost({ onAddPost }) {
 
       {streamError && <p className="stream-error">{streamError}</p>}
 
+      {imagePreview && (
+        <div className="create-post-image-preview">
+          <img src={imagePreview} alt="Selected upload preview" style={{ maxWidth: "100%", maxHeight: "220px", borderRadius: "12px", objectFit: "cover" }} />
+          <button type="button" className="close-video-btn" onClick={() => {
+            setSelectedImage(null);
+            setImagePreview("");
+          }}>
+            Remove photo
+          </button>
+        </div>
+      )}
+
       <div className="create-post-footer">
         <span className="create-post-counter">{content.trim().length}/{MAX_POST_LENGTH}</span>
         {errorMessage && <span className="create-post-error">{errorMessage}</span>}
       </div>
 
       <div className="create-post-actions">
-        <span>
+        <label style={{ cursor: "pointer" }}>
           <FaCamera /> Photo
-        </span>
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
+        </label>
         <span>
           <FaNewspaper /> Article
         </span>

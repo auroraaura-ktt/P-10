@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getVisiblePosts, toggleFollowRelationship } from '../src/utils/socialStore.js';
+import { createSocialPost, deleteSocialPostById, getVisiblePosts, listAllSocialPosts, toggleFollowRelationship } from '../src/utils/socialStore.js';
 
 test('server-side visibility logic keeps public posts visible and followers-only posts gated', () => {
   const posts = [
@@ -23,4 +23,21 @@ test('server-side follow toggling adds and removes exact targets', () => {
   const removed = toggleFollowRelationship(added, { id: 'new', username: 'New' });
   assert.equal(removed.length, 1);
   assert.equal(removed[0].id, 'friend');
+});
+
+test('createSocialPost persists an image URL in the shared post store', () => {
+  const created = createSocialPost({
+    userId: 'tester',
+    username: 'Tester',
+    content: 'Image post',
+    image: '/api/social/uploads/demo.png',
+  });
+
+  const posts = listAllSocialPosts();
+  const saved = posts.find((post) => post.id === created.id);
+
+  assert.ok(saved);
+  assert.equal(saved.image, '/api/social/uploads/demo.png');
+
+  deleteSocialPostById(created.id);
 });

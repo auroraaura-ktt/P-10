@@ -21,6 +21,7 @@
     "minimatch": "^10.2.6",
     "mongodb": "^7.5.0",
     "mongoose": "^9.9.0",
+    "multer": "^2.2.0",
     "neo4j-driver": "^6.0.0"
   },
   "devDependencies": {

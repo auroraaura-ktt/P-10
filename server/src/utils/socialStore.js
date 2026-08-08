@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,9 +6,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(__dirname, '..', '..', 'data');
 const postsFile = resolve(dataDir, 'social-posts.json');
 const followsFile = resolve(dataDir, 'social-follows.json');
+const uploadsDir = resolve(dataDir, 'uploads');
 
 function ensureDataStore() {
   mkdirSync(dataDir, { recursive: true });
+  mkdirSync(uploadsDir, { recursive: true });
 }
 
 function readJson(filePath, fallbackValue) {
@@ -93,12 +95,21 @@ export function updateSocialPostById(postId, patch = {}) {
 
 export function createSocialPost(post) {
   const posts = readJson(postsFile, []);
+  let imagePath = null;
+
+  if (post.imageFile) {
+    const fileName = `${Date.now()}-${post.imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const destination = resolve(uploadsDir, fileName);
+    copyFileSync(post.imageFile.path, destination);
+    imagePath = `/api/social/uploads/${fileName}`;
+  }
+
   const nextPost = {
     id: post.id || `post-${Date.now()}`,
     userId: post.userId || 'guest',
     username: post.username || 'MiitVerse member',
     content: post.content || '',
-    image: post.image || null,
+    image: post.image || imagePath || null,
     createdAt: post.createdAt || new Date().toISOString(),
     likes: Number(post.likes || 0),
     comments: Array.isArray(post.comments) ? post.comments : [],

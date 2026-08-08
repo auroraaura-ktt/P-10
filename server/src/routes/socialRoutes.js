@@ -1,4 +1,8 @@
 import { Router } from 'express';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import multer from 'multer';
 
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { requireRole } from '../middleware/roleMiddleware.js';
@@ -14,6 +18,40 @@ import {
 } from '../utils/socialStore.js';
 
 const router = Router();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const uploadDir = resolve(__dirname, '..', '..', 'data', 'uploads');
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post('/uploads', authMiddleware, upload.single('image'), (req, res) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ message: 'No image file provided' });
+  }
+
+  const fileName = `${Date.now()}-${file.originalname?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'upload'}`;
+  mkdirSync(uploadDir, { recursive: true });
+  const filePath = resolve(uploadDir, fileName);
+  writeFileSync(filePath, file.buffer);
+
+  const imageUrl = `/api/social/uploads/${fileName}`;
+  res.json({ imageUrl });
+});
+
+router.get('/uploads/:fileName', (req, res) => {
+  const fileName = req.params.fileName;
+  const filePath = resolve(uploadDir, fileName);
+
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ message: 'Image not found' });
+  }
+
+  const mimeType = fileName.match(/\.(png|jpe?g|gif|webp|svg)$/i)?.[1];
+  const contentType = mimeType ? `image/${mimeType.replace('jpg', 'jpeg')}` : 'application/octet-stream';
+  const fileBuffer = readFileSync(filePath);
+
+  res.set('Content-Type', contentType);
+  res.send(fileBuffer);
+});
 
 router.get('/posts', authMiddleware, (req, res) => {
   const { userId } = req.query || {}
@@ -27,11 +65,27 @@ router.get('/posts', authMiddleware, (req, res) => {
   res.json({ posts });
 });
 
-router.post('/posts', authMiddleware, (req, res) => {
+router.post('/posts', authMiddleware, upload.single('image'), (req, res) => {
   const displayName = req.body?.username || req.user?.username || req.body?.user?.username || 'MiitVerse member';
+  const content = req.body?.content || req.body?.message || '';
+  const imageUrl = typeof req.body?.image === 'string' && req.body.image.trim()
+    ? req.body.image
+    : null;
+
+  let resolvedImageUrl = imageUrl;
+
+  if (req.file) {
+    const fileName = `${Date.now()}-${req.file.originalname?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'upload'}`;
+    mkdirSync(uploadDir, { recursive: true });
+    const filePath = resolve(uploadDir, fileName);
+    writeFileSync(filePath, req.file.buffer);
+    resolvedImageUrl = `/api/social/uploads/${fileName}`;
+  }
 
   const post = createSocialPost({
     ...req.body,
+    content,
+    image: resolvedImageUrl,
     userId: req.user.id,
     username: displayName,
     suspended: false,

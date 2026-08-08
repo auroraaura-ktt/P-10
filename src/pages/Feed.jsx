@@ -10,6 +10,31 @@ import PostList from "../components/PostList"
 import { getVisiblePosts, shouldPersistSocialPost, toggleFollowRelationship } from "../lib/socialFeed"
 import { apiRequest } from "../lib/api"
 
+async function uploadPostImage(file) {
+  if (!file) return null
+
+  const formData = new FormData()
+  formData.append('image', file)
+
+  const authToken = typeof window !== 'undefined' ? window.localStorage.getItem('miitverse-auth') : null
+  const parsedAuth = authToken ? JSON.parse(authToken) : null
+  const token = parsedAuth?.token
+
+  const response = await fetch('/api/social/uploads', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData?.message || 'Image upload failed')
+  }
+
+  const data = await response.json()
+  return data.imageUrl || null
+}
+
 export default function Feed() {
   const { user, ready } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -86,16 +111,46 @@ export default function Feed() {
     }
 
     try {
-      const payload = {
-        ...newPost,
-        username: resolvedUsername || newPost.username,
+      let postResponse
+
+      if (newPost.imageFile) {
+        const formData = new FormData()
+        formData.append('content', newPost.content || '')
+        formData.append('username', resolvedUsername || newPost.username || 'MiitVerse member')
+        formData.append('visibility', newPost.visibility || 'public')
+        formData.append('image', newPost.imageFile)
+
+        const authToken = typeof window !== 'undefined' ? window.localStorage.getItem('miitverse-auth') : null
+        const parsedAuth = authToken ? JSON.parse(authToken) : null
+        const token = parsedAuth?.token
+
+        const response = await fetch('/api/social/posts', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData?.message || 'Failed to save post')
+        }
+
+        postResponse = await response.json()
+      } else {
+        const payload = {
+          ...newPost,
+          username: resolvedUsername || newPost.username,
+          image: newPost.image || null,
+          imageFile: undefined,
+        }
+
+        postResponse = await apiRequest('/social/posts', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
       }
 
-      const { post } = await apiRequest('/social/posts', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      })
-
+      const post = postResponse?.post || postResponse
       setPosts((currentPosts) => [post, ...currentPosts])
     } catch (error) {
       console.error('Failed to save post:', error)
