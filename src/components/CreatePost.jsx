@@ -5,7 +5,7 @@ import { useAuth } from "../context/useAuth";
 const MAX_POST_LENGTH = 280;
 
 export default function CreatePost({ onAddPost }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [videoOpen, setVideoOpen] = useState(false);
   const [streamError, setStreamError] = useState(null);
   const [content, setContent] = useState("");
@@ -74,10 +74,19 @@ export default function CreatePost({ onAddPost }) {
       return;
     }
 
+    const storedAuth = typeof window !== "undefined" ? window.localStorage.getItem("miitverse-auth") : null;
+    const storedUser = storedAuth ? JSON.parse(storedAuth) : null;
+    const resolvedUsername =
+      user?.username ||
+      storedUser?.user?.username ||
+      storedUser?.username ||
+      user?.email?.split("@")[0] ||
+      "MiitVerse member";
+
     const newPost = {
       id: Date.now(),
-      userId: user?.id || "guest",
-      username: user?.username || "MiitVerse member",
+      userId: user?.id || storedUser?.user?.id || "guest",
+      username: resolvedUsername,
       profilePicture: user?.profilePicture || null,
       content: trimmedContent,
       image: null,

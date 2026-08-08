@@ -13,6 +13,14 @@ export function getVisiblePosts(posts = [], currentUserId = null, following = []
   });
 }
 
+export function shouldPersistSocialPost({ user, ready, authToken }) {
+  if (typeof authToken === 'string' && authToken.trim()) {
+    return true;
+  }
+
+  return ready && Boolean(user?.id);
+}
+
 export function toggleFollowRelationship(currentFollowing = [], targetUser = null) {
   if (!targetUser) return currentFollowing;
 

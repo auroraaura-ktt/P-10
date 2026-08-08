@@ -28,10 +28,12 @@ router.get('/posts', authMiddleware, (req, res) => {
 });
 
 router.post('/posts', authMiddleware, (req, res) => {
+  const displayName = req.body?.username || req.user?.username || req.body?.user?.username || 'MiitVerse member';
+
   const post = createSocialPost({
     ...req.body,
     userId: req.user.id,
-    username: req.user.username || 'MiitVerse member',
+    username: displayName,
     suspended: false,
   });
 

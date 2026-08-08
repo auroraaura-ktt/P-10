@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getVisiblePosts, toggleFollowRelationship } from '../src/lib/socialFeed.js';
+import { getVisiblePosts, shouldPersistSocialPost, toggleFollowRelationship } from '../src/lib/socialFeed.js';
 
 test('getVisiblePosts keeps public posts visible to everyone', () => {
   const posts = [
@@ -25,4 +25,24 @@ test('toggleFollowRelationship adds or removes a follow target', () => {
   const removed = toggleFollowRelationship(added, { id: 'new', username: 'New' });
   assert.equal(removed.length, 1);
   assert.equal(removed[0].id, 'friend');
+});
+
+test('shouldPersistSocialPost uses server persistence when an auth token is present', () => {
+  const result = shouldPersistSocialPost({
+    user: null,
+    ready: false,
+    authToken: '{"token":"abc"}',
+  });
+
+  assert.equal(result, true);
+});
+
+test('shouldPersistSocialPost stays local-only for unauthenticated users', () => {
+  const result = shouldPersistSocialPost({
+    user: null,
+    ready: true,
+    authToken: '',
+  });
+
+  assert.equal(result, false);
 });

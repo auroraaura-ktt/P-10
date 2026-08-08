@@ -505,7 +505,12 @@ export async function loginUser(req, res) {
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      {
+        id: user.id,
+        role: user.role,
+        username: user.username,
+        email: user.email,
+      },
       env.jwtSecret,
       { expiresIn: '7d' }
     )

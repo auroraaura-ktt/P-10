@@ -19,7 +19,7 @@ function formatTimestamp(value) {
 export default function PostCard({ post = {} }) {
   const {
     id = "default",
-    username = post.author || "MiitVerse member",
+    username = post.author || post.username || "",
     profilePicture = null,
     content = "The latest community update is ready.",
     image = null,
@@ -76,7 +76,9 @@ export default function PostCard({ post = {} }) {
     setShowReactionModal(true);
   };
 
-  const initials = username
+  const displayName = typeof username === "string" && username.trim() ? username.trim() : "User";
+
+  const initials = displayName
     .split(" ")
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase())
@@ -151,7 +153,7 @@ export default function PostCard({ post = {} }) {
 
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span className="post-card-author" style={{ fontWeight: "600" }}>{username}</span>
+                <span className="post-card-author" style={{ fontWeight: "600" }}>{displayName}</span>
                 {verified && <VerifiedBadge size="small" />}
               </div>
               <div className="post-card-time">{formatTimestamp(createdAt)}</div>

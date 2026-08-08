@@ -7,11 +7,11 @@ import TopBar from "../components/TopBar"
 import CreatePost from "../components/CreatePost"
 import StoriesBar from "../components/StoriesBar"
 import PostList from "../components/PostList"
-import { getVisiblePosts, toggleFollowRelationship } from "../lib/socialFeed"
+import { getVisiblePosts, shouldPersistSocialPost, toggleFollowRelationship } from "../lib/socialFeed"
 import { apiRequest } from "../lib/api"
 
 export default function Feed() {
-  const { user } = useAuth()
+  const { user, ready } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [posts, setPosts] = useState([])
@@ -23,6 +23,10 @@ export default function Feed() {
         const savedFollowing = localStorage.getItem("feed-following")
         if (savedFollowing) {
           setFollowing(JSON.parse(savedFollowing))
+        }
+
+        if (!ready) {
+          return
         }
 
         if (!user?.id) {
@@ -59,10 +63,20 @@ export default function Feed() {
     }
 
     loadFeedData()
-  }, [user?.id])
+  }, [ready, user?.id])
 
   const handleAddPost = async (newPost) => {
-    if (!user?.id) {
+    const storedAuth = typeof window !== 'undefined' ? window.localStorage.getItem('miitverse-auth') : null
+    const parsedStoredAuth = storedAuth ? JSON.parse(storedAuth) : null
+    const resolvedUsername = user?.username || parsedStoredAuth?.user?.username || parsedStoredAuth?.username || null
+
+    const shouldUseServerPersistence = shouldPersistSocialPost({
+      user,
+      ready,
+      authToken: storedAuth,
+    })
+
+    if (!shouldUseServerPersistence) {
       setPosts((currentPosts) => {
         const nextPosts = [newPost, ...currentPosts]
         localStorage.setItem("feed-posts", JSON.stringify(nextPosts))
@@ -72,9 +86,14 @@ export default function Feed() {
     }
 
     try {
+      const payload = {
+        ...newPost,
+        username: resolvedUsername || newPost.username,
+      }
+
       const { post } = await apiRequest('/social/posts', {
         method: 'POST',
-        body: JSON.stringify(newPost),
+        body: JSON.stringify(payload),
       })
 
       setPosts((currentPosts) => [post, ...currentPosts])
