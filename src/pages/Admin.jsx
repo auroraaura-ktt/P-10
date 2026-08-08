@@ -6,6 +6,10 @@ import './Admin.css'
 export default function Admin() {
   const { user, token, logout } = useAuth()
   const [users, setUsers] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [userActionMessage, setUserActionMessage] = useState({ type: '', text: '' })
+  const [updatingUserStatus, setUpdatingUserStatus] = useState(false)
+  const [userConfirmation, setUserConfirmation] = useState(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [error, setError] = useState(null)
 
@@ -220,6 +224,12 @@ export default function Admin() {
         type: 'success',
         text: `Password reset for ${data.user.username} successfully!`,
       })
+      if (selectedUser?.id === resetPasswordUserId) {
+        setUserActionMessage({
+          type: 'success',
+          text: `Password reset for ${data.user.username} successfully.`,
+        })
+      }
       setResetPasswordUserId(null)
       setNewPassword('')
       await loadUsers()
@@ -234,10 +244,6 @@ export default function Admin() {
   }
 
   const handleDeleteUser = async (userId, username) => {
-    if (!window.confirm(`Delete user '${username}'? This cannot be undone.`)) {
-      return
-    }
-
     try {
       await apiRequest(`/users/${userId}`, {
         method: 'DELETE',
@@ -245,10 +251,70 @@ export default function Admin() {
           Authorization: `Bearer ${token}`,
         },
       })
+      if (selectedUser?.id === userId) {
+        setSelectedUser(null)
+        setActiveSection('users')
+      }
       await loadUsers()
     } catch (err) {
       setError(err.message || 'Failed to delete user')
     }
+  }
+
+  const openUserDetails = (userItem) => {
+    setSelectedUser(userItem)
+    setUserActionMessage({ type: '', text: '' })
+    setActiveSection('user-details')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const applyUserSuspension = async () => {
+    if (!selectedUser || selectedUser.id === user?.id) return
+
+    const nextSuspended = !selectedUser.suspended
+    setUpdatingUserStatus(true)
+    setUserActionMessage({ type: '', text: '' })
+    try {
+      const data = await apiRequest(`/users/${encodeURIComponent(selectedUser.id)}/suspension`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ suspended: nextSuspended }),
+      })
+      const updatedUser = { ...selectedUser, ...data.user }
+      setSelectedUser(updatedUser)
+      setUsers((currentUsers) => currentUsers.map((item) => item.id === updatedUser.id ? { ...item, ...updatedUser } : item))
+      setUserActionMessage({ type: 'success', text: data.message })
+    } catch (err) {
+      setUserActionMessage({ type: 'error', text: err.message || 'Failed to update account status' })
+    } finally {
+      setUpdatingUserStatus(false)
+    }
+  }
+
+  const requestUserSuspension = () => {
+    if (!selectedUser || selectedUser.id === user?.id) return
+    setUserConfirmation({
+      type: selectedUser.suspended ? 'restore' : 'suspend',
+      user: selectedUser,
+    })
+  }
+
+  const requestUserDeletion = () => {
+    if (!selectedUser || selectedUser.id === user?.id) return
+    setUserConfirmation({ type: 'delete', user: selectedUser })
+  }
+
+  const confirmUserAction = async () => {
+    if (!userConfirmation) return
+    const { type: actionType, user: targetUser } = userConfirmation
+    setUserConfirmation(null)
+
+    if (actionType === 'delete') {
+      await handleDeleteUser(targetUser.id, targetUser.fullName || targetUser.username)
+      return
+    }
+
+    await applyUserSuspension()
   }
 
   async function loadAllPosts() {
@@ -351,6 +417,7 @@ export default function Admin() {
     posts: 'Posts',
     events: 'Events',
     reports: 'Reports',
+    'user-details': 'User Details',
   }
 
   const pageDescriptions = {
@@ -360,6 +427,7 @@ export default function Admin() {
     posts: 'Manage posts and content moderation.',
     events: 'Create and manage upcoming events.',
     reports: 'Review flagged reports and moderation tasks.',
+    'user-details': 'Review account information and complete management actions.',
   }
 
   const goToSection = (key) => {
@@ -407,19 +475,10 @@ export default function Admin() {
                           <td className="admin-action-cell">
                             <button
                               type="button"
-                              className="admin-reset-btn"
-                              onClick={() => setResetPasswordUserId(userItem.id)}
+                              className="admin-more-actions-btn"
+                              onClick={() => openUserDetails(userItem)}
                             >
-                              Reset Password
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-delete-btn"
-                              onClick={() => handleDeleteUser(userItem.id, userItem.fullName || userItem.username)}
-                              disabled={userItem.id === user?.id}
-                              title={userItem.id === user?.id ? 'You cannot delete your own admin account' : 'Delete this user'}
-                            >
-                              Delete
+                              More actions →
                             </button>
                           </td>
                         </tr>
@@ -431,6 +490,62 @@ export default function Admin() {
             </section>
           </>
         )
+      case 'user-details': {
+        if (!selectedUser) {
+          return (
+            <section className="admin-user-details-empty">
+              <h2>No user selected</h2>
+              <p>Choose a user from Manage Users to view their account details.</p>
+              <button type="button" className="admin-more-actions-btn" onClick={() => goToSection('users')}>Go to Manage Users</button>
+            </section>
+          )
+        }
+
+        const displayName = selectedUser.fullName || selectedUser.username || 'MiitVerse user'
+        const initials = displayName.split(' ').filter(Boolean).map((part) => part[0]?.toUpperCase()).join('').slice(0, 2) || 'U'
+        const isCurrentAdmin = selectedUser.id === user?.id
+
+        return (
+          <section className="admin-user-details">
+            <button type="button" className="admin-back-button" onClick={() => goToSection('users')}>← Back to Manage Users</button>
+            <div className="admin-user-profile-card">
+              <div className="admin-user-avatar">{initials}</div>
+              <div className="admin-user-profile-copy">
+                <p className="admin-eyebrow">ACCOUNT PROFILE</p>
+                <h2>{displayName}</h2>
+                <p>{selectedUser.email}</p>
+                <div className="admin-user-badges"><span className="admin-role-badge">{selectedUser.role || 'user'}</span><span className={`admin-status-badge ${selectedUser.suspended ? 'suspended' : 'active'}`}>{selectedUser.suspended ? 'Suspended' : 'Active'}</span></div>
+              </div>
+            </div>
+
+            {userActionMessage.text && <p className={`message message-${userActionMessage.type}`}>{userActionMessage.text}</p>}
+
+            <div className="admin-user-details-grid">
+              <section className="admin-user-info-card">
+                <p className="admin-eyebrow">ACCOUNT INFORMATION</p>
+                <h3>Details</h3>
+                <dl>
+                  <div><dt>Account name</dt><dd>{displayName}</dd></div>
+                  <div><dt>Email address</dt><dd>{selectedUser.email}</dd></div>
+                  <div><dt>Role</dt><dd>{selectedUser.role || 'user'}</dd></div>
+                  <div><dt>Joined</dt><dd>{selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : 'Not available'}</dd></div>
+                  <div><dt>Account ID</dt><dd className="admin-user-id">{selectedUser.id}</dd></div>
+                </dl>
+              </section>
+
+              <section className="admin-user-actions-card">
+                <p className="admin-eyebrow">ADMIN ACTIONS</p>
+                <h3>Manage this account</h3>
+                <p>Actions take effect immediately. Use suspension to block sign-in without removing account data.</p>
+                <button type="button" className="admin-reset-btn" onClick={() => setResetPasswordUserId(selectedUser.id)}>Reset password</button>
+                <button type="button" className="admin-suspend-btn" disabled={isCurrentAdmin || updatingUserStatus} onClick={requestUserSuspension}>{updatingUserStatus ? 'Updating…' : selectedUser.suspended ? 'Restore account' : 'Suspend account'}</button>
+                <button type="button" className="admin-delete-btn" disabled={isCurrentAdmin} onClick={requestUserDeletion}>Delete account</button>
+                {isCurrentAdmin && <small>You cannot suspend or delete your own admin account.</small>}
+              </section>
+            </div>
+          </section>
+        )
+      }
       case 'page-accounts':
         return (
           <section id="page-accounts" className="admin-page-accounts">
@@ -766,6 +881,21 @@ export default function Admin() {
                   </button>
                 </div>
               </form>
+            </div>
+          </section>
+        )}
+
+        {userConfirmation && (
+          <section className="admin-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-confirm-title">
+            <div className="admin-confirm-dialog">
+              <span className={`admin-confirm-icon ${userConfirmation.type}`}>{userConfirmation.type === 'delete' ? '!' : '✓'}</span>
+              <p className="admin-eyebrow">CONFIRM ACTION</p>
+              <h3 id="admin-confirm-title">{userConfirmation.type === 'delete' ? 'Delete this account?' : userConfirmation.type === 'suspend' ? 'Suspend this account?' : 'Restore this account?'}</h3>
+              <p>{userConfirmation.type === 'delete' ? `This permanently removes ${userConfirmation.user.fullName || userConfirmation.user.username}'s account and cannot be undone.` : userConfirmation.type === 'suspend' ? `${userConfirmation.user.fullName || userConfirmation.user.username} will no longer be able to sign in until the account is restored.` : `${userConfirmation.user.fullName || userConfirmation.user.username} will be able to sign in again.`}</p>
+              <div className="admin-confirm-actions">
+                <button type="button" className="form-cancel" onClick={() => setUserConfirmation(null)}>Cancel</button>
+                <button type="button" className={userConfirmation.type === 'delete' ? 'admin-delete-btn' : userConfirmation.type === 'suspend' ? 'admin-suspend-btn' : 'form-submit'} onClick={confirmUserAction}>{userConfirmation.type === 'delete' ? 'Delete account' : userConfirmation.type === 'suspend' ? 'Suspend account' : 'Restore account'}</button>
+              </div>
             </div>
           </section>
         )}

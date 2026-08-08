@@ -498,6 +498,10 @@ export async function loginUser(req, res) {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
+    if (user.suspended) {
+      return res.status(403).json({ message: 'This account has been suspended. Please contact an administrator.' })
+    }
+
     passwordMatches = await bcrypt.compare(password, user.passwordHash)
 
     if (!passwordMatches) {

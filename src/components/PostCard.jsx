@@ -2,6 +2,8 @@ import "./PostCard.css";
 import { useState, useEffect } from "react";
 import ReactionModal from "./ReactionModal";
 import VerifiedBadge from "./VerifiedBadge";
+import { useAuth } from "../context/useAuth";
+import { apiRequest } from "../lib/api";
 
 function formatTimestamp(value) {
   if (!value) return "just now";
@@ -27,35 +29,57 @@ export default function PostCard({ post = {} }) {
     likes = 0,
     comments = [],
     reposts = 0,
+    likedBy = [],
     verified = true,
   } = post;
 
+  const { user } = useAuth();
+
   const initialCommentCount = Array.isArray(comments) ? comments.length : Number(comments || 0);
 
-  const [reactions, setReactions] = useState(() => {
-    const saved = localStorage.getItem(`post-reactions-${id}`);
-    return saved
-      ? JSON.parse(saved)
-      : {
-          likes: Number(likes || 0),
-          comments: initialCommentCount,
-          shares: Number(reposts || 0),
-          liked: false,
-        };
+  const initialLikers = Array.isArray(likedBy) ? likedBy : [];
+  const [reactions, setReactions] = useState({
+    likes: Number(likes || 0),
+    comments: initialCommentCount,
+    shares: Number(reposts || 0),
+    liked: initialLikers.some((entry) => String(entry?.userId) === String(user?.id)),
+    likers: initialLikers,
   });
+  const [liking, setLiking] = useState(false);
 
   const [showReactionModal, setShowReactionModal] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(`post-reactions-${id}`, JSON.stringify(reactions));
-  }, [reactions, id]);
-
-  const handleLike = () => {
-    setReactions((prev) => ({
-      ...prev,
-      liked: !prev.liked,
-      likes: prev.liked ? prev.likes - 1 : prev.likes + 1,
+    const nextLikers = Array.isArray(likedBy) ? likedBy : [];
+    setReactions((current) => ({
+      ...current,
+      likes: Number(likes || 0),
+      comments: initialCommentCount,
+      shares: Number(reposts || 0),
+      liked: nextLikers.some((entry) => String(entry?.userId) === String(user?.id)),
+      likers: nextLikers,
     }));
+  }, [id, likes, initialCommentCount, reposts, user?.id, likedBy]);
+
+  const handleLike = async () => {
+    if (liking || !user?.id) return;
+
+    setLiking(true);
+    try {
+      const result = await apiRequest(`/social/posts/${encodeURIComponent(id)}/likes`, { method: "POST" });
+      const nextPost = result.post || {};
+      const nextLikers = Array.isArray(nextPost.likedBy) ? nextPost.likedBy : [];
+      setReactions((current) => ({
+        ...current,
+        likes: Number(nextPost.likes || 0),
+        liked: Boolean(result.reacted),
+        likers: nextLikers,
+      }));
+    } catch (error) {
+      console.error("Failed to save reaction:", error);
+    } finally {
+      setLiking(false);
+    }
   };
 
   const handleComment = () => {
@@ -92,6 +116,7 @@ export default function PostCard({ post = {} }) {
         onClose={() => setShowReactionModal(false)}
         post={post}
         reactions={reactions}
+        likers={reactions.likers}
       />
 
       <div className="post-card">
@@ -224,6 +249,7 @@ export default function PostCard({ post = {} }) {
           <button
             className="post-action-btn"
             onClick={handleLike}
+            disabled={liking}
             style={{
               flex: 1,
               display: "flex",

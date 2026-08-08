@@ -9,6 +9,7 @@ const mongoUserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, default: 'user' },
+    suspended: { type: Boolean, default: false },
     verified: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     source: { type: String, default: 'mongo' },
@@ -84,6 +85,10 @@ export async function writeUserToMongo(userData = {}) {
     update.$set.verified = userData.verified
   }
 
+  if (typeof userData.suspended === 'boolean') {
+    update.$set.suspended = userData.suspended
+  }
+
   if (userData.createdAt) {
     update.$set.createdAt = userData.createdAt
   }
@@ -132,6 +137,14 @@ export async function listPageUsersFromMongo() {
 
 export async function deleteUserFromMongo(userId) {
   return UserModel.findOneAndDelete({ id: userId })
+}
+
+export async function setUserSuspensionInMongo(userId, suspended) {
+  return UserModel.findOneAndUpdate(
+    { id: userId },
+    { $set: { suspended: Boolean(suspended) } },
+    { new: true }
+  ).lean()
 }
 
 export async function syncUserToNeo4j(userData) {

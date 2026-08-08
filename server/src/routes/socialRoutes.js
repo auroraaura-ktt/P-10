@@ -15,6 +15,7 @@ import {
   deleteSocialPostById,
   updateSocialPostById,
   listSocialPostsByUserId,
+  toggleSocialPostLike,
 } from '../utils/socialStore.js';
 
 const router = Router();
@@ -93,6 +94,19 @@ router.post('/posts', authMiddleware, upload.single('image'), (req, res) => {
 
   res.status(201).json({ post });
 });
+
+router.post('/posts/:id/likes', authMiddleware, (req, res) => {
+  const result = toggleSocialPostLike(req.params.id, {
+    id: req.user.id,
+    username: req.user.username,
+  })
+
+  if (!result) {
+    return res.status(404).json({ message: 'Post not found' })
+  }
+
+  res.json(result)
+})
 
 // Admin: list all posts
 router.get('/posts/all', authMiddleware, requireRole('admin'), (req, res) => {

@@ -1,19 +1,10 @@
 import { useState } from "react";
 import VerifiedBadge from "./VerifiedBadge";
 
-export default function ReactionModal({ isOpen, onClose, post, reactions }) {
+export default function ReactionModal({ isOpen, onClose, post, reactions, likers = [] }) {
   const [activeTab, setActiveTab] = useState("likes"); // likes, comments, shares
 
   if (!isOpen) return null;
-
-  // Sample user data for reactions
-  const likers = [
-    { id: 1, name: "John Doe", avatar: "JD", verified: false },
-    { id: 2, name: "Sarah Ahmed", avatar: "SA", verified: true },
-    { id: 3, name: "Mike Johnson", avatar: "MJ", verified: false },
-    { id: 4, name: "Emma Wilson", avatar: "EW", verified: true },
-    { id: 5, name: "Ali Khan", avatar: "AK", verified: false },
-  ];
 
   const commenters = [
     {
@@ -175,9 +166,14 @@ export default function ReactionModal({ isOpen, onClose, post, reactions }) {
         >
           {activeTab === "likes" && (
             <div style={{ padding: "16px" }}>
-              {likers.slice(0, reactions.likes).map((user) => (
+              {likers.length === 0 ? (
+                <p style={{ margin: 0, color: "#667085", textAlign: "center" }}>No account reactions to show yet.</p>
+              ) : likers.map((user) => {
+                const accountName = user.username || "MiitVerse member";
+                const initials = accountName.split(" ").filter(Boolean).map((part) => part[0]?.toUpperCase()).join("").slice(0, 2) || "U";
+                return (
                 <div
-                  key={user.id}
+                  key={user.userId}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -216,21 +212,19 @@ export default function ReactionModal({ isOpen, onClose, post, reactions }) {
                         fontSize: "12px",
                       }}
                     >
-                      {user.avatar}
+                      {initials}
                     </div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span style={{ fontWeight: "600" }}>{user.name}</span>
-                      {user.verified && (
-                        <VerifiedBadge size="small" />
-                      )}
+                      <span style={{ fontWeight: "600" }}>{accountName}</span>
                     </div>
-                    <span style={{ fontSize: "12px", color: "#999" }}>@{user.avatar.toLowerCase()}</span>
+                    <span style={{ fontSize: "12px", color: "#999" }}>Account reaction</span>
                   </div>
                   <span style={{ fontSize: "18px" }}>❤️</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

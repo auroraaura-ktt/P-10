@@ -1,5 +1,77 @@
 [
   {
+    "id": "post-1786205533341",
+    "userId": "c6e379a8-e35f-404d-b850-7e4b4bca8e40",
+    "username": "Kyaw Lin",
+    "content": "",
+    "image": "/api/social/uploads/1786205533334-Screenshot_2026-07-18_113659.png",
+    "createdAt": "2026-08-08T16:12:13.341Z",
+    "likes": 1,
+    "likedBy": [
+      {
+        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+        "username": "Kyaw Thein Tun"
+      }
+    ],
+    "comments": [],
+    "reposts": 0,
+    "visibility": "public"
+  },
+  {
+    "id": "post-1786205433516",
+    "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+    "username": "Kyaw Thein Tun",
+    "content": "This is Test Photo!!!",
+    "image": "/api/social/uploads/1786205433512-ChatGPT_Image_Jun_10__2026__10_49_32_PM.png",
+    "createdAt": "2026-08-08T16:10:33.516Z",
+    "likes": 1,
+    "likedBy": [
+      {
+        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+        "username": "Kyaw Thein Tun"
+      }
+    ],
+    "comments": [],
+    "reposts": 0,
+    "visibility": "public"
+  },
+  {
+    "id": "post-1786204893773",
+    "userId": "5847df0b-2fd8-4b75-9fcb-6369960fae75",
+    "username": "MiitVerse Campus Social Communication",
+    "content": "We are now communicate as campus communication system. Welcome Back!!!",
+    "image": "/api/social/uploads/1786204893768-ChatGPT_Image_Jun_4__2026__08_22_55_PM.png",
+    "createdAt": "2026-08-08T16:01:33.773Z",
+    "likes": 1,
+    "comments": [],
+    "reposts": 0,
+    "visibility": "public",
+    "likedBy": [
+      {
+        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+        "username": "Kyaw Thein Tun"
+      }
+    ]
+  },
+  {
+    "id": "post-1786204469931",
+    "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+    "username": "Kyaw Thein Tun",
+    "content": "",
+    "image": "/api/social/uploads/1786204469927-Screenshot_2026-08-08_004208.png",
+    "createdAt": "2026-08-08T15:54:29.931Z",
+    "likes": 1,
+    "comments": [],
+    "reposts": 0,
+    "visibility": "public",
+    "likedBy": [
+      {
+        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+        "username": "Kyaw Thein Tun"
+      }
+    ]
+  },
+  {
     "id": "post-1786200096872",
     "userId": "c6e379a8-e35f-404d-b850-7e4b4bca8e40",
     "username": "Kyaw Lin",
@@ -78,10 +150,16 @@
     "content": "test",
     "image": null,
     "createdAt": "2026-08-08T06:38:30.358Z",
-    "likes": 0,
+    "likes": 1,
     "comments": [],
     "reposts": 0,
-    "visibility": "public"
+    "visibility": "public",
+    "likedBy": [
+      {
+        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
+        "username": "Kyaw Thein Tun"
+      }
+    ]
   },
   {
     "id": 1786170892101,

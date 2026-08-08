@@ -74,7 +74,7 @@ export function listSocialPostsByUserId(userId) {
 export function deleteSocialPostById(postId) {
   if (!postId) return false;
   const posts = readJson(postsFile, []);
-  const updated = (posts || []).filter((p) => p && p.id !== postId);
+  const updated = (posts || []).filter((p) => p && String(p.id) !== String(postId));
   writeJson(postsFile, updated);
   return true;
 }
@@ -84,7 +84,7 @@ export function updateSocialPostById(postId, patch = {}) {
   const posts = readJson(postsFile, []);
   let changed = null;
   const updated = (posts || []).map((p) => {
-    if (!p || p.id !== postId) return p;
+    if (!p || String(p.id) !== String(postId)) return p;
     const next = { ...p, ...patch };
     changed = next;
     return next;
@@ -112,6 +112,7 @@ export function createSocialPost(post) {
     image: post.image || imagePath || null,
     createdAt: post.createdAt || new Date().toISOString(),
     likes: Number(post.likes || 0),
+    likedBy: Array.isArray(post.likedBy) ? post.likedBy : [],
     comments: Array.isArray(post.comments) ? post.comments : [],
     reposts: Number(post.reposts || 0),
     visibility: post.visibility || 'public',
@@ -120,6 +121,35 @@ export function createSocialPost(post) {
   const nextPosts = [nextPost, ...posts];
   writeJson(postsFile, nextPosts);
   return nextPost;
+}
+
+export function toggleSocialPostLike(postId, account) {
+  if (!postId || !account?.id) return null
+
+  const posts = readJson(postsFile, [])
+  let result = null
+  const updated = posts.map((post) => {
+    if (!post || String(post.id) !== String(postId)) return post
+
+    const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+    const existingIndex = likedBy.findIndex((entry) => String(entry?.userId) === String(account.id))
+    const nextLikedBy = existingIndex >= 0
+      ? likedBy.filter((_, index) => index !== existingIndex)
+      : [...likedBy, { userId: String(account.id), username: account.username || 'MiitVerse member' }]
+    const legacyLikes = Math.max(Number(post.likes || 0), likedBy.length)
+    const nextPost = {
+      ...post,
+      likedBy: nextLikedBy,
+      likes: existingIndex >= 0 ? Math.max(0, legacyLikes - 1) : legacyLikes + 1,
+    }
+
+    result = { post: nextPost, reacted: existingIndex < 0 }
+    return nextPost
+  })
+
+  if (!result) return null
+  writeJson(postsFile, updated)
+  return result
 }
 
 export function getSocialFollows(userId) {

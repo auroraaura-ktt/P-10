@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { FaArrowLeft, FaBullhorn, FaChartLine, FaCheckCircle, FaImage, FaPen, FaUsers } from 'react-icons/fa'
+
 import { useAuth } from '../context/useAuth'
 import { apiRequest } from '../lib/api'
 import { buildPagePost, normalizePagePosts } from '../lib/pagePosts'
-import './Admin.css'
+import './PageDashboard.css'
 
 export default function PageDashboard() {
   const { slug } = useParams()
@@ -15,6 +17,7 @@ export default function PageDashboard() {
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const [message, setMessage] = useState('')
+  const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [imageError, setImageError] = useState('')
 
@@ -27,67 +30,47 @@ export default function PageDashboard() {
 
       try {
         const data = await apiRequest(`/auth/pages/${encodeURIComponent(slug)}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         })
-
-        if (active) {
-          setPage(data.page)
-        }
+        if (active) setPage(data.page)
       } catch (err) {
-        if (active) {
-          setError(err.message || 'Failed to load page')
-        }
+        if (active) setError(err.message || 'Failed to load page')
       } finally {
-        if (active) {
-          setLoading(false)
-        }
+        if (active) setLoading(false)
       }
     }
 
     loadPage()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [slug, token])
 
   useEffect(() => {
     let active = true
 
     async function loadPosts() {
-      setLoading(true)
+      if (!page?.id) {
+        setPosts([])
+        return
+      }
+
       try {
-        if (!page?.id) {
-          setPosts([])
-          return
-        }
-
         const data = await apiRequest(`/social/posts?userId=${encodeURIComponent(page.id)}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         })
-
-        if (active) {
-          setPosts(normalizePagePosts(data.posts || []))
-        }
-      } catch (e) {
+        if (active) setPosts(normalizePagePosts(data.posts || []))
+      } catch {
         if (active) setPosts([])
-      } finally {
-        if (active) setLoading(false)
       }
     }
 
     loadPosts()
-    return () => {
-      active = false
-    }
-  }, [page?.id, token, slug])
+    return () => { active = false }
+  }, [page?.id, token])
 
   const pageTitle = useMemo(() => page?.pageName || 'Page Dashboard', [page])
+  const pageInitial = pageTitle.trim().charAt(0).toUpperCase() || 'P'
 
-  const handlePostSubmit = (event) => {
+  const handlePostSubmit = async (event) => {
     event.preventDefault()
     const trimmed = draft.trim()
 
@@ -95,171 +78,146 @@ export default function PageDashboard() {
       setMessage('Write something or attach an image before publishing to the page.')
       return
     }
-    ;(async () => {
-      setPosting(true)
-      try {
-        const body = {
-          content: trimmed,
-          image: imagePreview || null,
-        }
 
-        const data = await apiRequest('/social/posts', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        })
-
-        const nextPost = buildPagePost({
-          ...data.post,
-        })
-
-        const nextPosts = normalizePagePosts([nextPost, ...posts])
-        setPosts(nextPosts)
-        setDraft('')
-        setImagePreview(null)
-        setImageError('')
-        setMessage('Post published to the page feed.')
-      } catch (err) {
-        setMessage(err.message || 'Failed to publish post')
-      } finally {
-        setPosting(false)
+    setPosting(true)
+    setMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('content', trimmed)
+      if (imageFile) {
+        formData.append('image', imageFile)
       }
-    })()
+
+      const data = await apiRequest('/social/posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      setPosts((currentPosts) => normalizePagePosts([buildPagePost(data.post), ...currentPosts]))
+      setDraft('')
+      setImageFile(null)
+      setImagePreview(null)
+      setImageError('')
+      setMessage('Your page update is live.')
+    } catch (err) {
+      setMessage(err.message || 'Failed to publish post')
+    } finally {
+      setPosting(false)
+    }
   }
 
   const handleImageChange = (event) => {
     setImageError('')
-    const file = event.target.files && event.target.files[0]
+    const file = event.target.files?.[0]
     if (!file) return
-
     if (!file.type.startsWith('image/')) {
-      setImageError('Only image files are allowed')
+      setImageError('Only image files are allowed.')
       return
     }
-
-    // limit to 5MB
     if (file.size > 5 * 1024 * 1024) {
-      setImageError('Image must be 5MB or smaller')
+      setImageError('Image must be 5MB or smaller.')
       return
     }
 
     const reader = new FileReader()
-    reader.onload = () => {
-      setImagePreview(reader.result)
-    }
+    reader.onload = () => setImagePreview(reader.result)
     reader.readAsDataURL(file)
-  }
-
-  const handleRemoveImage = () => {
-    setImagePreview(null)
-    setImageError('')
-    // reset file input value if needed — handled by uncontrolled input change
+    setImageFile(file)
   }
 
   if (loading) {
-    return <div className="admin-page-shell">Loading page dashboard...</div>
+    return <main className="page-dashboard-state">Loading your page dashboard…</main>
   }
 
   if (error || !page) {
-    return <div className="admin-page-shell"><p className="message message-error">{error || 'Page not found.'}</p><Link to="/admin">Back to admin</Link></div>
+    return (
+      <main className="page-dashboard-state">
+        <p>{error || 'Page not found.'}</p>
+        <Link to="/feed">Return to feed</Link>
+      </main>
+    )
   }
 
   return (
-    <div className="admin-page-shell">
-      <div className="admin-page-heading">
-        <h1>{pageTitle}</h1>
-        <p>{page.description || 'This page dashboard is ready for posts and updates.'}</p>
-      </div>
+    <main className="page-dashboard">
+      <aside className="page-dashboard-sidebar">
+        <Link className="page-dashboard-brand" to="/feed">
+          <img src="/miitLogo.png" alt="MIIT" />
+          <span><strong>Miit<span>Verse</span></strong><small>PAGE STUDIO</small></span>
+        </Link>
 
-      <section className="stats-grid">
-        <div className="stat-card">
-          <h3>Posts</h3>
-          <h2>{posts.length}</h2>
-          <p>Published updates</p>
-        </div>
-        <div className="stat-card">
-          <h3>Followers</h3>
-          <h2>0</h2>
-          <p>New audience</p>
-        </div>
-        <div className="stat-card">
-          <h3>Reach</h3>
-          <h2>0</h2>
-          <p>Engagement score</p>
-        </div>
-      </section>
-
-      <section className="admin-page-accounts" style={{ marginTop: '24px' }}>
-        <div className="admin-create-header">
-          <h2>Create Page Post</h2>
-          <p>Share a status update, announcement, or public message from this page.</p>
+        <div className="page-account-summary">
+          <span className="page-avatar">{pageInitial}</span>
+          <div><strong>{pageTitle}</strong><small>Page account</small></div>
         </div>
 
-        <form className="admin-create-form" onSubmit={handlePostSubmit}>
-          <label htmlFor="pagePost">Page update</label>
-          <textarea
-            id="pagePost"
-            name="pagePost"
-            rows="4"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-              if (message) {
-                setMessage('')
-              }
-            }}
-            placeholder={`Write something for ${pageTitle}`}
-          />
+        <nav className="page-dashboard-nav" aria-label="Page dashboard">
+          <a className="active" href="#overview"><FaChartLine /> Overview</a>
+          <a href="#create-post"><FaPen /> Create post</a>
+          <a href="#recent-posts"><FaBullhorn /> Published posts</a>
+        </nav>
 
-          <div style={{ marginTop: '8px' }}>
-            <label htmlFor="pageImage">Attach image (optional)</label>
-            <input
-              id="pageImage"
-              name="pageImage"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                handleImageChange(e)
-                if (message) setMessage('')
-              }}
-            />
-            {imageError ? <p className="message message-error">{imageError}</p> : null}
-            {imagePreview ? (
-              <div style={{ marginTop: '8px' }}>
-                <img src={imagePreview} alt="preview" style={{ maxWidth: '100%', maxHeight: '240px' }} />
-                <div>
-                  <button type="button" onClick={handleRemoveImage} style={{ marginTop: '6px' }}>Remove image</button>
-                </div>
-              </div>
-            ) : null}
+        <Link className="page-back-link" to="/feed"><FaArrowLeft /> Back to feed</Link>
+      </aside>
+
+      <section className="page-dashboard-main">
+        <header className="page-dashboard-header" id="overview">
+          <div>
+            <p className="page-kicker">PAGE DASHBOARD</p>
+            <h1>Welcome back, {pageTitle}</h1>
+            <p>{page.description || 'Manage your page updates and keep your community informed.'}</p>
           </div>
+          <div className="page-user-chip"><span>{user?.username?.charAt(0)?.toUpperCase() || pageInitial}</span>{user?.username || pageTitle}</div>
+        </header>
 
-          <button type="submit" disabled={posting}>
-            {posting ? 'Publishing...' : 'Publish Post'}
-          </button>
-          {message ? <p className="message message-success">{message}</p> : null}
-        </form>
+        <section className="page-hero-card">
+          <div className="page-hero-icon"><FaBullhorn /></div>
+          <div>
+            <p className="page-kicker">YOUR PAGE IS READY</p>
+            <h2>Share something worth seeing.</h2>
+            <p>Publish announcements, news, and moments for your audience from one focused workspace.</p>
+          </div>
+          <a className="page-primary-action" href="#create-post"><FaPen /> Create update</a>
+        </section>
+
+        <section className="page-stat-grid" aria-label="Page statistics">
+          <article className="page-stat-card"><span className="page-stat-icon blue"><FaBullhorn /></span><div><p>Published posts</p><strong>{posts.length}</strong><small>Updates shared</small></div></article>
+          <article className="page-stat-card"><span className="page-stat-icon gold"><FaUsers /></span><div><p>Followers</p><strong>0</strong><small>Audience members</small></div></article>
+          <article className="page-stat-card"><span className="page-stat-icon green"><FaChartLine /></span><div><p>Reach</p><strong>0</strong><small>Engagement score</small></div></article>
+        </section>
+
+        <section className="page-workspace-grid">
+          <section className="page-composer-card" id="create-post">
+            <div className="page-card-heading"><div><p className="page-kicker">CREATE</p><h2>Publish an update</h2></div><span className="page-avatar small">{pageInitial}</span></div>
+            <form onSubmit={handlePostSubmit}>
+              <label htmlFor="pagePost">What would you like to share?</label>
+              <textarea id="pagePost" rows="6" value={draft} onChange={(event) => { setDraft(event.target.value); if (message) setMessage('') }} placeholder={`Write an update from ${pageTitle}…`} />
+              <div className="page-composer-actions">
+                <label className="page-image-picker" htmlFor="pageImage"><FaImage /> Add image</label>
+                <input id="pageImage" type="file" accept="image/*" onChange={handleImageChange} />
+                <span>{draft.trim().length} characters</span>
+                <button type="submit" disabled={posting}>{posting ? 'Publishing…' : <><FaBullhorn /> Publish update</>}</button>
+              </div>
+              {imageError && <p className="page-message error">{imageError}</p>}
+              {message && <p className={`page-message ${message === 'Your page update is live.' ? 'success' : 'error'}`}>{message}</p>}
+              {imagePreview && <div className="page-image-preview"><img src={imagePreview} alt="Selected for your post" /><button type="button" onClick={() => { setImageFile(null); setImagePreview(null) }}>Remove image</button></div>}
+            </form>
+          </section>
+
+          <aside className="page-tips-card">
+            <span className="page-tips-icon"><FaCheckCircle /></span>
+            <p className="page-kicker">QUICK TIP</p>
+            <h2>Keep your page active</h2>
+            <p>Regular, clear updates help your audience know what is happening and when to take part.</p>
+          </aside>
+        </section>
+
+        <section className="page-posts-card" id="recent-posts">
+          <div className="page-card-heading"><div><p className="page-kicker">ACTIVITY</p><h2>Recent page posts</h2></div><span className="page-post-count">{posts.length} total</span></div>
+          {posts.length === 0 ? <div className="page-empty-state"><FaBullhorn /><h3>Your page has no posts yet</h3><p>Create the first update to start your page activity.</p><a href="#create-post">Create an update</a></div> : <div className="page-post-list">{posts.map((post) => <article className="page-post" key={post.id}><span className="page-avatar small">{pageInitial}</span><div><strong>{pageTitle}</strong><time>{new Date(post.createdAt).toLocaleString()}</time><p>{post.content}</p>{post.image && <img src={post.image} alt="Post attachment" />}</div></article>)}</div>}
+        </section>
       </section>
-
-      <section className="admin-page-accounts" style={{ marginTop: '24px' }}>
-        <div className="admin-create-header">
-          <h2>Page Feed</h2>
-          <p>Recent posts published from this special page account.</p>
-        </div>
-
-        {posts.length === 0 ? (
-          <p>No posts yet. Publish the first update above.</p>
-        ) : (
-          posts.map((post) => (
-            <div key={post.id} className="admin-create-form" style={{ marginTop: '12px' }}>
-              <p><strong>{pageTitle}</strong></p>
-              <p>{post.content}</p>
-              {post.image ? <img src={post.image} alt="post" style={{ maxWidth: '100%', marginTop: '8px' }} /> : null}
-              <small>{new Date(post.createdAt).toLocaleString()}</small>
-            </div>
-          ))
-        )}
-      </section>
-    </div>
+    </main>
   )
 }

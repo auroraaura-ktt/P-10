@@ -38,7 +38,8 @@ export async function apiRequest(path, options = {}) {
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   const headers = new Headers(requestHeaders || {})
-  if (!headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData
+  if (!headers.has('Content-Type') && !isFormData) {
     headers.set('Content-Type', 'application/json')
   }
   if (!headers.has('Authorization') && authToken) {
