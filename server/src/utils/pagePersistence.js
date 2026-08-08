@@ -56,7 +56,7 @@ export async function createPageRecord(pageData = {}) {
     try {
       return await PageModel.findOneAndUpdate(
         { email },
-        { $setOnInsert: document, $set: { description: document.description, coverImage: document.coverImage, role: 'page' } },
+        { $setOnInsert: document },
         { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
       ).lean()
     } catch (error) {

@@ -126,6 +126,10 @@ export async function listUsersFromMongo() {
   return UserModel.find({}).sort({ createdAt: -1 }).lean()
 }
 
+export async function listPageUsersFromMongo() {
+  return UserModel.find({ role: 'page' }).sort({ createdAt: -1 }).lean()
+}
+
 export async function deleteUserFromMongo(userId) {
   return UserModel.findOneAndDelete({ id: userId })
 }

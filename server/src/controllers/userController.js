@@ -155,14 +155,16 @@ export async function updateCurrentPassword(req, res) {
   }
 }
 
-export async function listUsers(req, res) {
-  const session = driver.session()
+export async function listUsers(req, res, deps = {}) {
+  const driverInstance = deps.driver || driver
+  const session = driverInstance.session()
 
   try {
     const result = await session.executeRead((tx) =>
       tx.run(
         `
           MATCH (user:User)
+          WHERE user.role IS NULL OR user.role <> 'page'
           RETURN user
           ORDER BY user.createdAt DESC
         `

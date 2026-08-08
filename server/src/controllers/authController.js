@@ -7,7 +7,7 @@ import { env } from '../config/env.js'
 import { normalizeEmail, isPageAccountEmail, isValidRegistrationEmail } from '../utils/accountAccess.js'
 import { sendVerificationEmail } from '../utils/emailService.js'
 import { createPageRecord, getPageRecordByOwner as getPageRecordByOwnerFromPersistence } from '../utils/pagePersistence.js'
-import { persistUserToBothDatabases } from '../utils/userPersistence.js'
+import { persistUserToBothDatabases, getUserFromMongo, writeUserToMongo } from '../utils/userPersistence.js'
 import { buildPageAccountPayload } from '../utils/authAccountHelpers.js'
 
 const pendingRegistrations = new Map()
@@ -67,6 +67,13 @@ export async function registerUser(req, res) {
     return res.status(400).json({
       message: 'Only @miit.edu.mm email addresses are allowed for registration.',
     })
+  }
+
+  const existingMongoEmail = await getUserFromMongo(normalizedEmail)
+  const existingMongoUsername = existingMongoEmail ? existingMongoEmail : await getUserFromMongo(trimmedUsername)
+
+  if (existingMongoEmail || existingMongoUsername) {
+    return res.status(409).json({ message: 'User already exists' })
   }
 
   const session = driver.session()
@@ -216,6 +223,38 @@ export async function resendVerificationCode(req, res) {
   })
 }
 
+export async function doesPageAccountAlreadyExist(accountPayload, deps = {}) {
+  const { getUser = getUserFromMongo, driverInstance = driver } = deps
+
+  const existingEmailUser = await getUser(accountPayload.email)
+  const existingUsernameUser = await getUser(accountPayload.username)
+
+  if (existingEmailUser || (existingUsernameUser && existingUsernameUser.role === 'page')) {
+    return true
+  }
+
+  const session = driverInstance.session()
+
+  try {
+    const existing = await session.executeRead((tx) =>
+      tx.run(
+        `
+          MATCH (user:User)
+          WHERE user.email = $email
+            OR (user.role = 'page' AND toLower(user.username) = toLower($username))
+          RETURN user
+          LIMIT 1
+        `,
+        { email: accountPayload.email, username: accountPayload.username }
+      )
+    )
+
+    return existing.records.length > 0
+  } finally {
+    await session.close()
+  }
+}
+
 export async function createPageAccount(req, res) {
   const { username, email, password, pageName } = req.body || {}
   const accountPayload = buildPageAccountPayload({ username, email, password, pageName })
@@ -228,53 +267,17 @@ export async function createPageAccount(req, res) {
     return res.status(400).json({ message: 'Page accounts must use an @miitverse.com email address.' })
   }
 
+  if (await doesPageAccountAlreadyExist(accountPayload)) {
+    return res.status(409).json({ message: 'Page account already exists' })
+  }
+
   const session = driver.session()
 
   try {
-    const existing = await session.executeRead((tx) =>
-      tx.run(
-        `
-          MATCH (user:User)
-          WHERE user.email = $email OR user.username = $username
-          RETURN user
-          LIMIT 1
-        `,
-        { email: accountPayload.email, username: accountPayload.username }
-      )
-    )
-
-    if (existing.records.length > 0) {
-      return res.status(409).json({ message: 'Page account already exists' })
-    }
-
     const passwordHash = await bcrypt.hash(accountPayload.password, 10)
     const createdAt = new Date().toISOString()
     const userId = randomUUID()
-    const result = await session.executeWrite((tx) =>
-      tx.run(
-        `
-          CREATE (user:User {
-            id: $id,
-            username: $username,
-            email: $email,
-            passwordHash: $passwordHash,
-            role: 'page',
-            verified: true,
-            createdAt: $createdAt
-          })
-          RETURN user
-        `,
-        {
-          id: userId,
-          username: accountPayload.username,
-          email: accountPayload.email,
-          passwordHash,
-          createdAt,
-        }
-      )
-    )
-
-    await persistUserToBothDatabases({
+    const mongoUserData = {
       id: userId,
       username: accountPayload.username,
       email: accountPayload.email,
@@ -282,19 +285,36 @@ export async function createPageAccount(req, res) {
       role: 'page',
       verified: true,
       createdAt,
-    })
+    }
 
-    await createPageRecord({
-      id: userId,
-      pageName: accountPayload.pageName || accountPayload.username,
-      slug: accountPayload.slug || accountPayload.username,
-      email: accountPayload.email,
-      ownerId: userId,
-      description: `Official page for ${accountPayload.pageName || accountPayload.username}`,
-    })
+    const mongoResult = await writeUserToMongo(mongoUserData)
+
+    await persistUserToBothDatabases(mongoUserData)
+
+    const result = { records: [{ get: () => ({ properties: mongoResult }) }] }
+
+    let pageRecordError = null
+
+    try {
+      await createPageRecord({
+        id: userId,
+        pageName: accountPayload.pageName || accountPayload.username,
+        slug: accountPayload.slug || accountPayload.username,
+        email: accountPayload.email,
+        ownerId: userId,
+        description: `Official page for ${accountPayload.pageName || accountPayload.username}`,
+      })
+    } catch (error) {
+      console.error('Page record creation error:', error)
+      pageRecordError = error
+    }
+
+    const responseMessage = pageRecordError
+      ? 'Page account created, but the page metadata could not be generated. The account can still sign in and page data will be completed on first login.'
+      : 'Page account created successfully. It can sign in with its email and password.'
 
     return res.status(201).json({
-      message: 'Page account created successfully. It can sign in with its email and password.',
+      message: responseMessage,
       user: serializeUser(result.records[0]),
     })
   } catch (error) {
@@ -336,7 +356,15 @@ export async function verifyUser(req, res) {
       return res.status(400).json({ message: 'Verification code expired' })
     }
 
-    const existing = await session.executeRead((tx) =>
+    const existingMongoEmail = await getUserFromMongo(normalizedEmail)
+    const existingMongoUsername = existingMongoEmail ? existingMongoEmail : await getUserFromMongo(pendingRegistration.username)
+
+    if (existingMongoEmail || existingMongoUsername) {
+      pendingRegistrations.delete(normalizedEmail)
+      return res.status(409).json({ message: 'User already exists' })
+    }
+
+    const existingNeo4j = await session.executeRead((tx) =>
       tx.run(
         `
           MATCH (user:User)
@@ -351,38 +379,12 @@ export async function verifyUser(req, res) {
       )
     )
 
-    if (existing.records.length > 0) {
+    if (existingNeo4j.records.length > 0) {
       pendingRegistrations.delete(normalizedEmail)
       return res.status(409).json({ message: 'User already exists' })
     }
 
     const userId = randomUUID()
-    const result = await session.executeWrite((tx) =>
-      tx.run(
-        `
-          CREATE (user:User {
-            id: $id,
-            username: $username,
-            email: $email,
-            passwordHash: $passwordHash,
-            role: 'user',
-            verified: true,
-            createdAt: $createdAt
-          })
-          RETURN user
-        `,
-        {
-          id: userId,
-          username: pendingRegistration.username,
-          email: pendingRegistration.email,
-          passwordHash: pendingRegistration.passwordHash,
-          createdAt: pendingRegistration.createdAt,
-        }
-      )
-    )
-
-    pendingRegistrations.delete(normalizedEmail)
-
     const userData = {
       id: userId,
       username: pendingRegistration.username,
@@ -393,11 +395,14 @@ export async function verifyUser(req, res) {
       createdAt: pendingRegistration.createdAt,
     }
 
+    const mongoResult = await writeUserToMongo(userData)
     await persistUserToBothDatabases(userData)
+
+    pendingRegistrations.delete(normalizedEmail)
 
     return res.status(201).json({
       message: 'Email verified. Account created.',
-      user: serializeUser(result.records[0]),
+      user: serializeUser({ properties: mongoResult }),
     })
   } catch (e) {
     console.error(e)
@@ -457,28 +462,43 @@ export async function loginUser(req, res) {
     return res.status(400).json({ message: 'email or username and password are required' })
   }
 
-  const session = driver.session()
+  let user = null
+  let passwordMatches = false
+  let session = null
 
   try {
-    const result = await session.executeRead((tx) =>
-      tx.run(
-        `
-          MATCH (user:User)
-          WHERE toLower(user.email) = toLower($identifier)
-             OR toLower(user.username) = toLower($identifier)
-          RETURN user
-          LIMIT 1
-        `,
-        { identifier }
-      )
-    )
+    user = await getUserFromMongo(identifier)
 
-    if (result.records.length === 0) {
+    if (!user) {
+      session = driver.session()
+
+      try {
+        const result = await session.executeRead((tx) =>
+          tx.run(
+            `
+              MATCH (user:User)
+              WHERE toLower(user.email) = toLower($identifier)
+                 OR toLower(user.username) = toLower($identifier)
+              RETURN user
+              LIMIT 1
+            `,
+            { identifier }
+          )
+        )
+
+        if (result.records.length > 0) {
+          user = getUserProperties(result.records[0].get('user'))
+        }
+      } catch (error) {
+        console.warn('Neo4j login lookup failed, falling back to MongoDB:', error.message)
+      }
+    }
+
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-    const user = getUserProperties(result.records[0].get('user'))
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash)
+    passwordMatches = await bcrypt.compare(password, user.passwordHash)
 
     if (!passwordMatches) {
       return res.status(401).json({ message: 'Invalid credentials' })
@@ -497,9 +517,12 @@ export async function loginUser(req, res) {
       token,
       user: responseUser,
     })
-  } catch {
+  } catch (error) {
+    console.error('Login failed:', error.message)
     return res.status(500).json({ message: 'Login failed' })
   } finally {
-    await session.close()
+    if (session) {
+      await session.close()
+    }
   }
 }

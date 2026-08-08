@@ -503,6 +503,13 @@ export default function Admin() {
                       </div>
                       <div className="admin-page-card-actions">
                         <span className="admin-page-badge">{pageItem.role || 'page'}</span>
+                        <button
+                          type="button"
+                          className="admin-reset-btn"
+                          onClick={() => setResetPasswordUserId(pageItem.ownerId || pageItem.id)}
+                        >
+                          Reset Password
+                        </button>
                         <a className="admin-button" href={`/page/${pageItem.slug}`}>
                           Open Dashboard
                         </a>

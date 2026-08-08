@@ -1,7 +1,8 @@
 import { Router } from 'express'
 
 import { createPageAccount, loginUser, registerUser, resendVerificationCode, verifyUser } from '../controllers/authController.js'
-import { getPageRecordBySlug, getPageRecordByOwner, listPageRecords } from '../utils/pagePersistence.js'
+import { createPageRecord, getPageRecordBySlug, getPageRecordByOwner, listPageRecords } from '../utils/pagePersistence.js'
+import { listPageUsersFromMongo } from '../utils/userPersistence.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
 
@@ -18,7 +19,43 @@ router.post('/register', registerUser)
 router.get('/pages', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     const pages = await listPageRecords()
-    res.json({ pages })
+    const pageUsers = await listPageUsersFromMongo()
+    const pageIds = new Set(pages.map((page) => page.ownerId).filter(Boolean))
+    const missingPageUsers = pageUsers.filter((user) => user.id && !pageIds.has(user.id))
+    const pageUsersByEmail = new Map(pageUsers.map((user) => [user.email, user]))
+
+    const repairedPages = pages.map((page) => {
+      if (!page.ownerId) {
+        const matchingUser = pageUsersByEmail.get(String(page.email || '').toLowerCase())
+        if (matchingUser) {
+          return { ...page, ownerId: matchingUser.id }
+        }
+      }
+      return page
+    })
+
+    const createdPageRecords = []
+    for (const user of missingPageUsers) {
+      try {
+        const record = await createPageRecord({
+          id: user.id,
+          pageName: user.username || user.email.split('@')[0] || 'Page',
+          slug: user.username || user.email.split('@')[0],
+          email: user.email,
+          ownerId: user.id,
+          description: `Official page for ${user.username || user.email.split('@')[0]}`,
+          createdAt: user.createdAt,
+        })
+
+        if (record) {
+          createdPageRecords.push({ ...record, ownerId: user.id })
+        }
+      } catch (error) {
+        console.error('Failed to create missing page record for user:', user.id, error.message)
+      }
+    }
+
+    res.json({ pages: [...repairedPages, ...createdPageRecords] })
   } catch (error) {
     res.status(500).json({ message: error.message || 'Failed to load pages' })
   }

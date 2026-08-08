@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/useAuth'
 import { apiRequest } from '../lib/api'
-import { canUseUserLogin } from '../lib/authAccess'
 import '../styles/AuthDesign.css'
 
 export default function Login() {
@@ -23,11 +22,6 @@ export default function Login() {
       const data = await login(form)
       const user = data.user
 
-      if (!canUseUserLogin(user.role)) {
-        setError('This account is for admin access. Please use the admin login page.')
-        return
-      }
-      // If this is a page account, redirect to its page dashboard
       if (user.role === 'page') {
         const normalizeSlug = (value = '') =>
           String(value)
@@ -61,6 +55,11 @@ export default function Login() {
           navigate(`/page/${encodeURIComponent(fallbackSlug)}`, { replace: true })
           return
         }
+      }
+
+      if (user.role === 'admin') {
+        navigate(location.state?.from?.pathname || '/admin', { replace: true })
+        return
       }
 
       const destination = location.state?.from?.pathname || '/feed'
