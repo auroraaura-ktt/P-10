@@ -56,7 +56,10 @@ async function start() {
   try {
     console.log('Connecting to MongoDB...')
     try {
-      await connectMongoDB()
+      const mongoConnection = await connectMongoDB()
+      if (!mongoConnection) {
+        throw new Error('MongoDB is required for durable application data and is unavailable.')
+      }
     } catch (err) {
       console.warn('⚠ MongoDB connection failed:', err.message)
     }

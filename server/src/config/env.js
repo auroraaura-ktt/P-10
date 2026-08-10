@@ -58,11 +58,12 @@ function buildMongoUri() {
 export const env = {
   port: Number(process.env.PORT || 3001),
   clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  appUrl: process.env.APP_URL || 'https://miitverse.onrender.com',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
   // SendGrid API key for email service
   sendgridApiKey: process.env.SENDGRID_API_KEY || '',
-  sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@miitverse.com',
-  sendgridFromName: process.env.SENDGRID_FROM_NAME || 'MiitVerse Authentication',
+  sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL || 'miitverse.info@gmail.com',
+  sendgridFromName: process.env.SENDGRID_FROM_NAME || 'MiitVerse',
   mongodbUri: buildMongoUri(),
   mongodbHost: normalizeEnvValue(process.env.MONGODB_HOST),
   mongodbUsername: normalizeEnvValue(process.env.MONGODB_USERNAME),

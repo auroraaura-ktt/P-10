@@ -66,6 +66,46 @@ export async function sendVerificationEmail(email, code) {
   }
 }
 
+export async function sendInvitationEmail(email) {
+  if (!env.sendgridApiKey) {
+    throw new Error('Email service not configured - SendGrid API key missing')
+  }
+
+  const appUrl = env.appUrl.replace(/\/+$/, '')
+  const msg = {
+    to: email,
+    from: `${env.sendgridFromName} <${env.sendgridFromEmail}>`,
+    replyTo: `${env.sendgridFromName} <${env.sendgridFromEmail}>`,
+    subject: 'You’re invited to MiitVerse',
+    text: `You’re invited to join MiitVerse, the official social hub of MIIT. Open ${appUrl} to get started.`,
+    html: `
+      <div style="margin:0;padding:32px 16px;background:#eef3fb;font-family:Arial,sans-serif;color:#17213a">
+        <div style="max-width:560px;margin:0 auto;overflow:hidden;border-radius:22px;background:#ffffff;box-shadow:0 16px 40px rgba(17,50,109,.15)">
+          <div style="padding:38px 38px 30px;background:linear-gradient(135deg,#071c53,#2459ae);color:#fff;text-align:center">
+            <div style="display:inline-block;padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:999px;font-size:12px;font-weight:700;letter-spacing:1px">MIITVERSE</div>
+            <h1 style="margin:18px 0 8px;font-size:30px;line-height:1.2">You’re invited</h1>
+            <p style="margin:0;color:#dce8ff;font-size:16px">Your MIIT community is waiting for you.</p>
+          </div>
+          <div style="padding:34px 38px 40px;text-align:center">
+            <p style="margin:0 0 14px;font-size:17px;line-height:1.6">Connect with classmates, discover campus updates, and share what matters at MIIT.</p>
+            <p style="margin:0 0 28px;color:#64748b;font-size:14px;line-height:1.5">Create your account to join the official MiitVerse social hub.</p>
+            <a href="${appUrl}" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#f4b400;color:#10275c;font-size:16px;font-weight:700;text-decoration:none">Join MiitVerse</a>
+          </div>
+          <div style="padding:18px 28px;background:#f7f9fd;color:#71809a;font-size:12px;text-align:center">Official Social Hub of MIIT</div>
+        </div>
+      </div>
+    `,
+  }
+
+  try {
+    await sgMail.send(msg)
+    return true
+  } catch (error) {
+    console.error('Failed to send invitation email:', error.message || error)
+    throw new Error(`Invitation email could not be sent: ${error?.message || String(error)}`)
+  }
+}
+
 /**
  * Verify SendGrid connection
  * @returns {Promise<boolean>}

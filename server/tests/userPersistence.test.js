@@ -33,5 +33,7 @@ test('persists to mongo and queues Neo4j sync when Neo4j is unavailable', async 
   assert.equal(neo4jCalls, 1)
   assert.equal(result.mongoSaved, true)
   assert.equal(result.neo4jSaved, false)
-  assert.equal(queuePendingNeo4jWrite({ id: 'user-1' }), true)
+  // The durable outbox is available only with an active MongoDB connection;
+  // production startup requires that connection before accepting requests.
+  assert.equal(await queuePendingNeo4jWrite({ id: 'user-1' }), false)
 })

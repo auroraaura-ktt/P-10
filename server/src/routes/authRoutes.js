@@ -5,6 +5,7 @@ import { createPageRecord, getPageRecordBySlug, getPageRecordByOwner, listPageRe
 import { listPageUsersFromMongo } from '../utils/userPersistence.js'
 import { authMiddleware } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
+import { sendInvitation } from '../controllers/invitationController.js'
 
 const router = Router()
 
@@ -85,6 +86,7 @@ router.get('/pages/:slug', authMiddleware, async (req, res) => {
   }
 })
 router.post('/create-page-account', authMiddleware, requireRole('admin'), createPageAccount)
+router.post('/invitations', authMiddleware, requireRole('admin'), sendInvitation)
 router.post('/login', loginUser)
 router.post('/verify', verifyUser)
 router.post('/verify/resend', resendVerificationCode)

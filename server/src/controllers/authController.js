@@ -9,8 +9,7 @@ import { sendVerificationEmail } from '../utils/emailService.js'
 import { createPageRecord, getPageRecordByOwner as getPageRecordByOwnerFromPersistence } from '../utils/pagePersistence.js'
 import { persistUserToBothDatabases, getUserFromMongo, writeUserToMongo } from '../utils/userPersistence.js'
 import { buildPageAccountPayload } from '../utils/authAccountHelpers.js'
-
-const pendingRegistrations = new Map()
+import { deletePendingRegistration, getPendingRegistration, hasPendingUsername, savePendingRegistration } from '../utils/pendingRegistrationPersistence.js'
 const verificationTtlMs = 15 * 60 * 1000
 const verificationResendCooldownMs = 3 * 60 * 1000
 
@@ -34,22 +33,9 @@ function serializeUser(record) {
   }
 }
 
-function sendVerificationEmailInBackground(email, code, pendingRegistration) {
-  sendVerificationEmail(email, code)
-    .then(() => {
-      if (pendingRegistration) {
-        pendingRegistration.emailDeliveryFailed = false
-        pendingRegistration.lastSentAt = Date.now()
-      }
-      console.log(`Verification code successfully sent to ${email}`)
-    })
-    .catch((error) => {
-      console.error(`Failed to send verification email to ${email}:`, error.message)
-      if (pendingRegistration) {
-        pendingRegistration.emailDeliveryFailed = true
-        pendingRegistration.lastSendError = error.message
-      }
-    })
+async function sendVerificationEmailForRegistration(email, code) {
+  await sendVerificationEmail(email, code)
+  console.log(`Verification code successfully sent to ${email}`)
 }
 
 export async function registerUser(req, res) {
@@ -79,17 +65,24 @@ export async function registerUser(req, res) {
   const session = driver.session()
 
   try {
-    const existing = await session.executeRead((tx) =>
-      tx.run(
-        `
-          MATCH (user:User)
-          WHERE user.email = $email OR user.username = $username
-          RETURN user
-          LIMIT 1
-        `,
-        { email: normalizedEmail, username: trimmedUsername }
+    let existing = { records: [] }
+    try {
+      existing = await session.executeRead((tx) =>
+        tx.run(
+          `
+            MATCH (user:User)
+            WHERE user.email = $email OR user.username = $username
+            RETURN user
+            LIMIT 1
+          `,
+          { email: normalizedEmail, username: trimmedUsername }
+        )
       )
-    )
+    } catch (error) {
+      // MongoDB enforces the canonical uniqueness constraints. Neo4j is a
+      // replica and must not make a durable registration disappear.
+      console.warn('Neo4j registration lookup failed; continuing with MongoDB:', error.message)
+    }
 
     if (existing.records.length > 0) {
       return res.status(409).json({ message: 'User already exists' })
@@ -97,14 +90,12 @@ export async function registerUser(req, res) {
 
     // Check whether the username is already pending for a different email.
     // Allow updating/resending for the same email (avoid blocking existing pending entries).
-    const pendingUsernameExists = Array.from(pendingRegistrations.values()).some(
-      (registration) => registration.username === trimmedUsername && registration.email !== normalizedEmail
-    )
+    const pendingUsernameExists = await hasPendingUsername(trimmedUsername, normalizedEmail)
 
-    let existingPending = pendingRegistrations.get(normalizedEmail)
+    let existingPending = await getPendingRegistration(normalizedEmail)
 
     if (existingPending && existingPending.verificationExpires < Date.now()) {
-      pendingRegistrations.delete(normalizedEmail)
+      await deletePendingRegistration(normalizedEmail)
       existingPending = null
     }
 
@@ -120,9 +111,7 @@ export async function registerUser(req, res) {
 
       if (
         trimmedUsername !== existingPending.username &&
-        Array.from(pendingRegistrations.values()).some(
-          (registration) => registration.email !== normalizedEmail && registration.username === trimmedUsername
-        )
+        await hasPendingUsername(trimmedUsername, normalizedEmail)
       ) {
         return res.status(409).json({ message: 'Username already pending verification' })
       }
@@ -140,7 +129,7 @@ export async function registerUser(req, res) {
       // Keep the original createdAt timestamp if present
       existingPending.createdAt ||= new Date().toISOString()
 
-      pendingRegistrations.set(normalizedEmail, existingPending)
+      await savePendingRegistration(existingPending)
     } else {
       if (pendingUsernameExists) {
         return res.status(409).json({ message: 'Verification already pending' })
@@ -152,7 +141,7 @@ export async function registerUser(req, res) {
       const verificationExpires = Date.now() + verificationTtlMs
 
       // Store pending registration temporarily
-      pendingRegistrations.set(normalizedEmail, {
+      await savePendingRegistration({
         username: trimmedUsername,
         email: normalizedEmail,
         passwordHash,
@@ -163,11 +152,15 @@ export async function registerUser(req, res) {
       })
     }
 
-    const pending = pendingRegistrations.get(normalizedEmail)
-    sendVerificationEmailInBackground(normalizedEmail, pending.verificationCode, pending)
+    const pending = await getPendingRegistration(normalizedEmail)
+    try {
+      await sendVerificationEmailForRegistration(normalizedEmail, pending.verificationCode)
+    } catch (error) {
+      return res.status(502).json({ message: error.message || 'Verification email could not be sent. Please try again.' })
+    }
 
     return res.status(201).json({
-      message: 'Verification email sending has started. Please check your inbox within a few seconds.',
+      message: 'Verification email sent. Please check your inbox.',
       email: normalizedEmail,
       resendAvailableAt: new Date((pending.lastSentAt || Date.now()) + verificationResendCooldownMs).toISOString(),
       verificationExpiresAt: new Date(pending.verificationExpires).toISOString(),
@@ -188,14 +181,14 @@ export async function resendVerificationCode(req, res) {
     return res.status(400).json({ message: 'email is required' })
   }
 
-  const pendingRegistration = pendingRegistrations.get(normalizedEmail)
+  const pendingRegistration = await getPendingRegistration(normalizedEmail)
 
   if (!pendingRegistration) {
     return res.status(404).json({ message: 'No verification pending' })
   }
 
   if (pendingRegistration.verificationExpires < Date.now()) {
-    pendingRegistrations.delete(normalizedEmail)
+    await deletePendingRegistration(normalizedEmail)
     return res.status(400).json({ message: 'Verification code expired. Please register again.' })
   }
 
@@ -213,11 +206,16 @@ export async function resendVerificationCode(req, res) {
   pendingRegistration.verificationExpires = Date.now() + verificationTtlMs
   pendingRegistration.lastSentAt = Date.now()
 
-  sendVerificationEmailInBackground(normalizedEmail, verificationCode, pendingRegistration)
-  console.log(`Background resend started for ${normalizedEmail}`)
+  await savePendingRegistration(pendingRegistration)
+
+  try {
+    await sendVerificationEmailForRegistration(normalizedEmail, verificationCode)
+  } catch (error) {
+    return res.status(502).json({ message: error.message || 'Verification email could not be sent. Please try again.' })
+  }
 
   return res.status(200).json({
-    message: 'Verification email resend started. Please check your inbox shortly.',
+    message: 'Verification email resent. Please check your inbox.',
     resendAvailableAt: new Date(pendingRegistration.lastSentAt + verificationResendCooldownMs).toISOString(),
     verificationExpiresAt: new Date(pendingRegistration.verificationExpires).toISOString(),
   })
@@ -234,7 +232,6 @@ export async function doesPageAccountAlreadyExist(accountPayload, deps = {}) {
   }
 
   const session = driverInstance.session()
-
   try {
     const existing = await session.executeRead((tx) =>
       tx.run(
@@ -250,6 +247,9 @@ export async function doesPageAccountAlreadyExist(accountPayload, deps = {}) {
     )
 
     return existing.records.length > 0
+  } catch (error) {
+    console.warn('Neo4j page-account lookup failed; continuing with MongoDB:', error.message)
+    return false
   } finally {
     await session.close()
   }
@@ -341,7 +341,7 @@ export async function verifyUser(req, res) {
   const session = driver.session()
 
   try {
-    const pendingRegistration = pendingRegistrations.get(normalizedEmail)
+    const pendingRegistration = await getPendingRegistration(normalizedEmail)
 
     if (!pendingRegistration) {
       return res.status(404).json({ message: 'No verification pending' })
@@ -352,7 +352,7 @@ export async function verifyUser(req, res) {
     }
 
     if (pendingRegistration.verificationExpires < Date.now()) {
-      pendingRegistrations.delete(normalizedEmail)
+      await deletePendingRegistration(normalizedEmail)
       return res.status(400).json({ message: 'Verification code expired' })
     }
 
@@ -360,27 +360,32 @@ export async function verifyUser(req, res) {
     const existingMongoUsername = existingMongoEmail ? existingMongoEmail : await getUserFromMongo(pendingRegistration.username)
 
     if (existingMongoEmail || existingMongoUsername) {
-      pendingRegistrations.delete(normalizedEmail)
+      await deletePendingRegistration(normalizedEmail)
       return res.status(409).json({ message: 'User already exists' })
     }
 
-    const existingNeo4j = await session.executeRead((tx) =>
-      tx.run(
-        `
-          MATCH (user:User)
-          WHERE user.email = $email OR user.username = $username
-          RETURN user
-          LIMIT 1
-        `,
-        {
-          email: normalizedEmail,
-          username: pendingRegistration.username,
-        }
+    let existingNeo4j = { records: [] }
+    try {
+      existingNeo4j = await session.executeRead((tx) =>
+        tx.run(
+          `
+            MATCH (user:User)
+            WHERE user.email = $email OR user.username = $username
+            RETURN user
+            LIMIT 1
+          `,
+          {
+            email: normalizedEmail,
+            username: pendingRegistration.username,
+          }
+        )
       )
-    )
+    } catch (error) {
+      console.warn('Neo4j verification lookup failed; continuing with MongoDB:', error.message)
+    }
 
     if (existingNeo4j.records.length > 0) {
-      pendingRegistrations.delete(normalizedEmail)
+      await deletePendingRegistration(normalizedEmail)
       return res.status(409).json({ message: 'User already exists' })
     }
 
@@ -398,7 +403,7 @@ export async function verifyUser(req, res) {
     const mongoResult = await writeUserToMongo(userData)
     await persistUserToBothDatabases(userData)
 
-    pendingRegistrations.delete(normalizedEmail)
+    await deletePendingRegistration(normalizedEmail)
 
     return res.status(201).json({
       message: 'Email verified. Account created.',

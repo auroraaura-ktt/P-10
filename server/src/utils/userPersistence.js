@@ -1,7 +1,6 @@
 import mongoose from 'mongoose'
 import { driver } from '../config/neo4j.js'
 
-const pendingNeo4jWrites = []
 const mongoUserSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true },
@@ -18,6 +17,14 @@ const mongoUserSchema = new mongoose.Schema(
 )
 
 const UserModel = mongoose.models.User || mongoose.model('User', mongoUserSchema)
+const neo4jSyncJobSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true, unique: true },
+    payload: { type: Object, required: true },
+  },
+  { timestamps: true, versionKey: false }
+)
+const Neo4jSyncJobModel = mongoose.models.Neo4jSyncJob || mongoose.model('Neo4jSyncJob', neo4jSyncJobSchema)
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -29,17 +36,13 @@ export function isNeo4jUnavailableError(error) {
   return [code, message].some((value) => /serviceunavailable|connection refused|connect|timeout|neo4j|not available/i.test(String(value)))
 }
 
-export function queuePendingNeo4jWrite(userData) {
+export async function queuePendingNeo4jWrite(userData) {
   if (!userData?.id) {
     return false
   }
 
-  const existing = pendingNeo4jWrites.find((item) => item.id === userData.id)
-  if (existing) {
-    return true
-  }
-
-  pendingNeo4jWrites.push({
+  if (mongoose.connection.readyState !== 1) return false
+  const payload = {
     id: userData.id,
     username: userData.username,
     email: userData.email,
@@ -47,7 +50,12 @@ export function queuePendingNeo4jWrite(userData) {
     role: userData.role || 'user',
     verified: Boolean(userData.verified),
     createdAt: userData.createdAt || new Date().toISOString(),
-  })
+  }
+  await Neo4jSyncJobModel.findOneAndUpdate(
+    { id: userData.id },
+    { $set: { payload } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  )
   return true
 }
 
@@ -180,7 +188,7 @@ export async function syncUserToNeo4j(userData) {
     if (!isNeo4jUnavailableError(error)) {
       console.error('Neo4j sync failed:', error.message)
     }
-    queuePendingNeo4jWrite(userData)
+    await queuePendingNeo4jWrite(userData)
     return false
   } finally {
     await session.close()
@@ -203,7 +211,7 @@ export async function persistUserToBothDatabases(userData = {}, deps = {}) {
     try {
       neo4jSaved = Boolean(await neo4jWriter(userData))
     } catch (error) {
-      queuePendingNeo4jWrite(userData)
+      await queuePendingNeo4jWrite(userData)
       console.warn('Neo4j persistence failed; queued for retry:', error.message)
     }
   }
@@ -212,17 +220,14 @@ export async function persistUserToBothDatabases(userData = {}, deps = {}) {
 }
 
 export async function flushPendingNeo4jWrites() {
-  if (pendingNeo4jWrites.length === 0) {
-    return 0
-  }
-
-  const pending = [...pendingNeo4jWrites]
-  pendingNeo4jWrites.length = 0
+  if (mongoose.connection.readyState !== 1) return 0
+  const pending = await Neo4jSyncJobModel.find({}).sort({ updatedAt: 1 }).lean()
 
   let flushed = 0
   for (const item of pending) {
-    const saved = await syncUserToNeo4j(item)
+    const saved = await syncUserToNeo4j(item.payload)
     if (saved) {
+      await Neo4jSyncJobModel.deleteOne({ _id: item._id })
       flushed += 1
     }
   }

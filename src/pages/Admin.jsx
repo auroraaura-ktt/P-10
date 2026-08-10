@@ -30,6 +30,9 @@ export default function Admin() {
   const [pageAccountMessage, setPageAccountMessage] = useState({ type: '', text: '' })
   const [pages, setPages] = useState([])
   const [loadingPages, setLoadingPages] = useState(false)
+  const [inviteEmails, setInviteEmails] = useState('')
+  const [sendingInvitation, setSendingInvitation] = useState(false)
+  const [invitationMessage, setInvitationMessage] = useState({ type: '', text: '' })
 
   const [resetPasswordUserId, setResetPasswordUserId] = useState(null)
   const [newPassword, setNewPassword] = useState('')
@@ -200,6 +203,25 @@ export default function Admin() {
       })
     } finally {
       setCreatingPageAccount(false)
+    }
+  }
+
+  const handleSendInvitation = async (e) => {
+    e.preventDefault()
+    setSendingInvitation(true)
+    setInvitationMessage({ type: '', text: '' })
+    try {
+      const data = await apiRequest('/auth/invitations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ emails: inviteEmails }),
+      })
+      setInvitationMessage({ type: 'success', text: data.message || 'Invitation sent.' })
+      setInviteEmails('')
+    } catch (err) {
+      setInvitationMessage({ type: 'error', text: err.message || 'Invitation could not be sent.' })
+    } finally {
+      setSendingInvitation(false)
     }
   }
 
@@ -406,7 +428,7 @@ export default function Admin() {
     { key: 'users', label: '👥 Manage Users' },
     { key: 'page-accounts', label: '🌐 Page Accounts' },
     { key: 'posts', label: '📝 Posts' },
-    { key: 'events', label: '📅 Events' },
+    { key: 'invitations', label: '✉️ Invitations' },
     { key: 'reports', label: '🚩 Reports' },
   ]
 
@@ -415,7 +437,7 @@ export default function Admin() {
     users: 'Manage Users',
     'page-accounts': 'Page Accounts',
     posts: 'Posts',
-    events: 'Events',
+    invitations: 'Invite to MiitVerse',
     reports: 'Reports',
     'user-details': 'User Details',
   }
@@ -425,7 +447,7 @@ export default function Admin() {
     users: 'Create and manage personal accounts from here.',
     'page-accounts': 'Create special MIIT page accounts without email verification.',
     posts: 'Manage posts and content moderation.',
-    events: 'Create and manage upcoming events.',
+    invitations: 'Send a welcoming MiitVerse invitation by email.',
     reports: 'Review flagged reports and moderation tasks.',
     'user-details': 'Review account information and complete management actions.',
   }
@@ -686,7 +708,31 @@ export default function Admin() {
             )}
           </section>
         )
-      case 'events':
+      case 'invitations':
+        return (
+          <section className="admin-invitations">
+            <div className="admin-create-header">
+              <p className="admin-eyebrow">COMMUNITY INVITATION</p>
+              <h2>Invite someone to MiitVerse</h2>
+              <p>Send a polished invitation email with a direct link to the official MiitVerse community.</p>
+            </div>
+            <div className="invitation-card">
+              <div className="invitation-preview">
+                <span className="invitation-icon">✉</span>
+                <div><strong>MiitVerse invitation</strong><small>Includes a “Join MiitVerse” button linking to miitverse.onrender.com</small></div>
+              </div>
+              <form className="invitation-form" onSubmit={handleSendInvitation}>
+                <label htmlFor="invite-emails">Recipient email addresses</label>
+                <textarea id="invite-emails" value={inviteEmails} onChange={(e) => setInviteEmails(e.target.value)} placeholder={'student1@example.com\nstudent2@example.com'} required disabled={sendingInvitation} />
+                <small className="invitation-help">Send one email or paste up to 50 addresses separated by commas, semicolons, spaces, or new lines.</small>
+                <div className="invitation-input-row">
+                  <button type="submit" disabled={sendingInvitation}>{sendingInvitation ? 'Sending…' : 'Send invitation'}</button>
+                </div>
+              </form>
+              {invitationMessage.text && <p className={`message message-${invitationMessage.type}`}>{invitationMessage.text}</p>}
+            </div>
+          </section>
+        )
       case 'reports':
         return (
           <section className="admin-page-accounts">

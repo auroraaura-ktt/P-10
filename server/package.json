@@ -9,7 +9,8 @@
     "seed-user": "node src/scripts/seedUser.js",
     "seed-sample-users": "node src/scripts/seedUser.js --count=120",
     "export-users": "node src/scripts/exportUsersJson.js",
-    "seed-social-posts": "node src/scripts/seedSocialPosts.js"
+    "seed-social-posts": "node src/scripts/seedSocialPosts.js",
+    "migrate-local-social-data": "node src/scripts/migrateLocalSocialData.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.0",

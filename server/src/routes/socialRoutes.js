@@ -1,159 +1,102 @@
-import { Router } from 'express';
-import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import multer from 'multer';
+import { Router } from 'express'
+import multer from 'multer'
 
-import { authMiddleware } from '../middleware/authMiddleware.js';
-import { requireRole } from '../middleware/roleMiddleware.js';
+import { authMiddleware } from '../middleware/authMiddleware.js'
+import { requireRole } from '../middleware/roleMiddleware.js'
 import {
-  createSocialPost,
-  getSocialFollows,
-  listSocialPosts,
-  saveSocialFollows,
-  listAllSocialPosts,
-  deleteSocialPostById,
-  updateSocialPostById,
-  listSocialPostsByUserId,
-  toggleSocialPostLike,
-} from '../utils/socialStore.js';
-import { listPageRecords } from '../utils/pagePersistence.js';
+  createSocialPost, deleteSocialPostById, getSocialAsset, getSocialFollows, listAllSocialPosts,
+  listSocialPosts, listSocialPostsByUserId, saveSocialAsset, saveSocialFollows,
+  toggleFollowRelationship, toggleSocialPostLike, updateSocialPostById,
+} from '../utils/socialStore.js'
+import { listPageRecords } from '../utils/pagePersistence.js'
 
-const router = Router();
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const uploadDir = resolve(__dirname, '..', '..', 'data', 'uploads');
-const upload = multer({ storage: multer.memoryStorage() });
+const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } })
 
-router.post('/uploads', authMiddleware, upload.single('image'), (req, res) => {
-  const file = req.file;
-  if (!file) {
-    return res.status(400).json({ message: 'No image file provided' });
-  }
+function safeFileName(file) {
+  return `${Date.now()}-${file.originalname?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'upload'}`
+}
 
-  const fileName = `${Date.now()}-${file.originalname?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'upload'}`;
-  mkdirSync(uploadDir, { recursive: true });
-  const filePath = resolve(uploadDir, fileName);
-  writeFileSync(filePath, file.buffer);
+async function storeUpload(file) {
+  const fileName = safeFileName(file)
+  return saveSocialAsset({ fileName, contentType: file.mimetype, data: file.buffer })
+}
 
-  const imageUrl = `/api/social/uploads/${fileName}`;
-  res.json({ imageUrl });
-});
-
-router.get('/uploads/:fileName', (req, res) => {
-  const fileName = req.params.fileName;
-  const filePath = resolve(uploadDir, fileName);
-
-  if (!existsSync(filePath)) {
-    return res.status(404).json({ message: 'Image not found' });
-  }
-
-  const mimeType = fileName.match(/\.(png|jpe?g|gif|webp|svg)$/i)?.[1];
-  const contentType = mimeType ? `image/${mimeType.replace('jpg', 'jpeg')}` : 'application/octet-stream';
-  const fileBuffer = readFileSync(filePath);
-
-  res.set('Content-Type', contentType);
-  res.send(fileBuffer);
-});
-
-router.get('/posts', authMiddleware, async (req, res) => {
-  const { userId } = req.query || {}
-  if (userId) {
-    const posts = listSocialPostsByUserId(userId)
-    return res.json({ posts })
-  }
-
-  const following = getSocialFollows(req.user.id);
-  let pagePostUserIds = []
-
+router.post('/uploads', authMiddleware, upload.single('image'), async (req, res, next) => {
   try {
+    if (!req.file) return res.status(400).json({ message: 'No image file provided' })
+    return res.json({ imageUrl: await storeUpload(req.file) })
+  } catch (error) { next(error) }
+})
+
+router.get('/uploads/:fileName', async (req, res, next) => {
+  try {
+    const asset = await getSocialAsset(req.params.fileName)
+    if (!asset) return res.status(404).json({ message: 'Image not found' })
+    res.type(asset.contentType).send(asset.data)
+  } catch (error) { next(error) }
+})
+
+router.get('/posts', authMiddleware, async (req, res, next) => {
+  try {
+    if (req.query?.userId) return res.json({ posts: await listSocialPostsByUserId(req.query.userId) })
+    const following = await getSocialFollows(req.user.id)
     const pages = await listPageRecords()
-    pagePostUserIds = (pages || []).map((page) => page.ownerId || page.id).filter(Boolean)
-  } catch (error) {
-    console.error('Failed to load page records for feed ordering:', error.message)
-  }
-
-  const posts = listSocialPosts(req.user.id, following, { pagePostUserIds });
-  res.json({ posts });
-});
-
-router.post('/posts', authMiddleware, upload.single('image'), (req, res) => {
-  const displayName = req.body?.username || req.user?.username || req.body?.user?.username || 'MiitVerse member';
-  const content = req.body?.content || req.body?.message || '';
-  const imageUrl = typeof req.body?.image === 'string' && req.body.image.trim()
-    ? req.body.image
-    : null;
-
-  let resolvedImageUrl = imageUrl;
-
-  if (req.file) {
-    const fileName = `${Date.now()}-${req.file.originalname?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'upload'}`;
-    mkdirSync(uploadDir, { recursive: true });
-    const filePath = resolve(uploadDir, fileName);
-    writeFileSync(filePath, req.file.buffer);
-    resolvedImageUrl = `/api/social/uploads/${fileName}`;
-  }
-
-  const post = createSocialPost({
-    ...req.body,
-    content,
-    image: resolvedImageUrl,
-    userId: req.user.id,
-    username: displayName,
-    suspended: false,
-  });
-
-  res.status(201).json({ post });
-});
-
-router.post('/posts/:id/likes', authMiddleware, (req, res) => {
-  const result = toggleSocialPostLike(req.params.id, {
-    id: req.user.id,
-    username: req.user.username,
-  })
-
-  if (!result) {
-    return res.status(404).json({ message: 'Post not found' })
-  }
-
-  res.json(result)
+    const pagePostUserIds = pages.map((page) => page.ownerId || page.id).filter(Boolean)
+    return res.json({ posts: await listSocialPosts(req.user.id, following, { pagePostUserIds }) })
+  } catch (error) { next(error) }
 })
 
-// Admin: list all posts
-router.get('/posts/all', authMiddleware, requireRole('admin'), (req, res) => {
-  const posts = listAllSocialPosts()
-  res.json({ posts })
+router.post('/posts', authMiddleware, upload.single('image'), async (req, res, next) => {
+  try {
+    const image = req.file ? await storeUpload(req.file) : (typeof req.body?.image === 'string' ? req.body.image.trim() || null : null)
+    const post = await createSocialPost({
+      ...req.body,
+      content: req.body?.content || req.body?.message || '',
+      image,
+      userId: req.user.id,
+      username: req.body?.username || req.user.username || 'MiitVerse member',
+    })
+    return res.status(201).json({ post })
+  } catch (error) { next(error) }
 })
 
-// Admin: delete a post by id
-router.delete('/posts/:id', authMiddleware, requireRole('admin'), (req, res) => {
-  const { id } = req.params || {}
-  const ok = deleteSocialPostById(id)
-  if (!ok) return res.status(404).json({ message: 'Post not found' })
-  res.json({ message: 'Deleted' })
+router.post('/posts/:id/likes', authMiddleware, async (req, res, next) => {
+  try {
+    const result = await toggleSocialPostLike(req.params.id, { id: req.user.id, username: req.user.username })
+    if (!result) return res.status(404).json({ message: 'Post not found' })
+    return res.json(result)
+  } catch (error) { next(error) }
 })
 
-// Admin: update a post (e.g., suspend/unsuspend)
-router.patch('/posts/:id', authMiddleware, requireRole('admin'), (req, res) => {
-  const { id } = req.params || {}
-  const patch = req.body || {}
-  const updated = updateSocialPostById(id, patch)
-  if (!updated) return res.status(404).json({ message: 'Post not found' })
-  res.json({ post: updated })
+router.get('/posts/all', authMiddleware, requireRole('admin'), async (req, res, next) => {
+  try { return res.json({ posts: await listAllSocialPosts() }) } catch (error) { next(error) }
+})
+router.delete('/posts/:id', authMiddleware, requireRole('admin'), async (req, res, next) => {
+  try { return await deleteSocialPostById(req.params.id) ? res.json({ message: 'Deleted' }) : res.status(404).json({ message: 'Post not found' }) } catch (error) { next(error) }
+})
+router.patch('/posts/:id', authMiddleware, requireRole('admin'), async (req, res, next) => {
+  try {
+    const post = await updateSocialPostById(req.params.id, req.body || {})
+    return post ? res.json({ post }) : res.status(404).json({ message: 'Post not found' })
+  } catch (error) { next(error) }
 })
 
-router.get('/follows', authMiddleware, (req, res) => {
-  res.json({ following: getSocialFollows(req.user.id) });
-});
+router.get('/follows', authMiddleware, async (req, res, next) => {
+  try { return res.json({ following: await getSocialFollows(req.user.id) }) } catch (error) { next(error) }
+})
+router.post('/follows', authMiddleware, async (req, res, next) => {
+  try {
+    const current = await getSocialFollows(req.user.id)
+    const following = await saveSocialFollows(req.user.id, toggleFollowRelationship(current, req.body?.targetUser))
+    return res.json({ following })
+  } catch (error) { next(error) }
+})
 
-router.post('/follows', authMiddleware, (req, res) => {
-  const { targetUser } = req.body || {};
-  const currentFollowing = getSocialFollows(req.user.id);
-  const nextFollowing = currentFollowing.some((entry) => (entry?.id ?? entry?.userId ?? entry?.username) === (targetUser?.id ?? targetUser?.userId ?? targetUser?.username))
-    ? currentFollowing.filter((entry) => (entry?.id ?? entry?.userId ?? entry?.username) !== (targetUser?.id ?? targetUser?.userId ?? targetUser?.username))
-    : [...currentFollowing, { id: targetUser?.id ?? targetUser?.userId ?? targetUser?.username, username: targetUser?.username || 'User' }];
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) return res.status(413).json({ message: 'Upload must be 15 MB or smaller' })
+  console.error('Social persistence failed:', error.message)
+  return res.status(503).json({ message: 'Data service unavailable. No changes were saved.' })
+})
 
-  saveSocialFollows(req.user.id, nextFollowing);
-  res.json({ following: nextFollowing });
-});
-
-export default router;
+export default router

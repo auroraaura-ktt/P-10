@@ -1,6 +1,10 @@
 import mongoose from 'mongoose'
 import { env } from './env.js'
 
+// Never buffer a write in process memory. A request either reaches MongoDB or
+// fails, so a restart cannot silently discard an accepted change.
+mongoose.set('bufferCommands', false)
+
 function normalize(value) {
   return typeof value === 'string' ? value.trim().replace(/^['"]|['"]$/g, '') : ''
 }

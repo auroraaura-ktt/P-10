@@ -1,221 +1,210 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto'
+import mongoose from 'mongoose'
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const dataDir = resolve(__dirname, '..', '..', 'data');
-const postsFile = resolve(dataDir, 'social-posts.json');
-const followsFile = resolve(dataDir, 'social-follows.json');
-const uploadsDir = resolve(dataDir, 'uploads');
+const { Schema } = mongoose
 
-function ensureDataStore() {
-  mkdirSync(dataDir, { recursive: true });
-  mkdirSync(uploadsDir, { recursive: true });
-}
+const socialPostSchema = new Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    username: { type: String, required: true },
+    content: { type: String, default: '' },
+    image: { type: String, default: null },
+    createdAt: { type: Date, default: Date.now, index: true },
+    likes: { type: Number, default: 0 },
+    likedBy: { type: [Schema.Types.Mixed], default: [] },
+    comments: { type: [Schema.Types.Mixed], default: [] },
+    reposts: { type: Number, default: 0 },
+    visibility: { type: String, default: 'public' },
+  },
+  { timestamps: true, versionKey: false }
+)
 
-function readJson(filePath, fallbackValue) {
-  if (!existsSync(filePath)) return fallbackValue;
+const socialFollowSchema = new Schema(
+  {
+    userId: { type: String, required: true, unique: true, index: true },
+    following: { type: [Schema.Types.Mixed], default: [] },
+  },
+  { timestamps: true, versionKey: false }
+)
 
-  try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
-  } catch {
-    return fallbackValue;
+const socialAssetSchema = new Schema(
+  {
+    fileName: { type: String, required: true, unique: true, index: true },
+    contentType: { type: String, required: true },
+    data: { type: Buffer, required: true },
+  },
+  { timestamps: true, versionKey: false }
+)
+
+const SocialPostModel = mongoose.models.SocialPost || mongoose.model('SocialPost', socialPostSchema)
+const SocialFollowModel = mongoose.models.SocialFollow || mongoose.model('SocialFollow', socialFollowSchema)
+const SocialAssetModel = mongoose.models.SocialAsset || mongoose.model('SocialAsset', socialAssetSchema)
+
+function requireDatabase() {
+  if (mongoose.connection.readyState !== 1) {
+    throw new Error('Database is unavailable. The request was not saved.')
   }
 }
 
-function writeJson(filePath, value) {
-  ensureDataStore();
-  writeFileSync(filePath, JSON.stringify(value, null, 2));
-}
-
-export function getVisiblePosts(posts = [], currentUserId = null, following = []) {
-  const followingIds = new Set((following || []).map((entry) => entry?.id ?? entry));
-
-  return (posts || []).filter((post) => {
-    if (!post) return false;
-    if (post.visibility === 'public') return true;
-    if (!currentUserId) return false;
-    if (post.userId === currentUserId) return true;
-    if (post.visibility === 'followers' && followingIds.has(post.userId)) return true;
-    return false;
-  });
-}
-
-export function getPostReactionCount(post = {}) {
-  const likes = Math.max(Number(post.likes || 0), Array.isArray(post.likedBy) ? post.likedBy.length : 0);
-  const comments = Array.isArray(post.comments) ? post.comments.length : Number(post.comments || 0);
-  const reposts = Number(post.reposts ?? post.shares ?? 0);
-
-  return Math.max(0, likes + comments + reposts);
-}
-
-export function isPagePost(post = {}, pagePostUserIds = []) {
-  if (!post) return false;
-  if (post.source === 'page' || post.postType === 'page') return true;
-
-  const pageIds = pagePostUserIds instanceof Set ? pagePostUserIds : new Set(pagePostUserIds || []);
-  return pageIds.has(post.userId) || pageIds.has(String(post.userId));
-}
-
-export function shuffleUserPostsByReactions(posts = [], random = Math.random) {
-  return [...(posts || [])]
-    .map((post, index) => {
-      const reactionWeight = Math.log1p(getPostReactionCount(post)) + 1;
-      const randomValue = Math.max(Number.EPSILON, Math.min(1 - Number.EPSILON, random()));
-      return {
-        post,
-        index,
-        priority: randomValue ** (1 / reactionWeight),
-      };
-    })
-    .sort((left, right) => {
-      if (right.priority !== left.priority) return right.priority - left.priority;
-      return left.index - right.index;
-    })
-    .map((entry) => entry.post);
-}
-
-export function applyUserPostWeightedShuffle(posts = [], options = {}) {
-  const pagePostUserIds = options.pagePostUserIds || options.pageUserIds || [];
-  const random = options.random || Math.random;
-  const userPosts = [];
-
-  for (const post of posts || []) {
-    if (!isPagePost(post, pagePostUserIds)) {
-      userPosts.push(post);
-    }
-  }
-
-  const shuffledUserPosts = shuffleUserPostsByReactions(userPosts, random);
-  let nextUserIndex = 0;
-
-  return (posts || []).map((post) => {
-    if (isPagePost(post, pagePostUserIds)) return post;
-    const nextPost = shuffledUserPosts[nextUserIndex];
-    nextUserIndex += 1;
-    return nextPost;
-  });
-}
-
-export function toggleFollowRelationship(currentFollowing = [], targetUser = null) {
-  if (!targetUser) return currentFollowing;
-
-  const targetId = targetUser.id ?? targetUser.userId ?? targetUser.username;
-  if (!targetId) return currentFollowing;
-
-  const exists = currentFollowing.some((entry) => (entry?.id ?? entry?.userId ?? entry?.username) === targetId);
-
-  if (exists) {
-    return currentFollowing.filter((entry) => (entry?.id ?? entry?.userId ?? entry?.username) !== targetId);
-  }
-
-  return [...currentFollowing, { id: targetId, username: targetUser.username || 'User' }];
-}
-
-export function listSocialPosts(currentUserId = null, following = [], options = {}) {
-  const posts = readJson(postsFile, []);
-  return applyUserPostWeightedShuffle(getVisiblePosts(posts, currentUserId, following), options);
-}
-
-export function listAllSocialPosts() {
-  return readJson(postsFile, []);
-}
-
-export function listSocialPostsByUserId(userId) {
-  if (!userId) return [];
-  const posts = readJson(postsFile, []);
-  return (posts || []).filter((p) => p && (p.userId === userId || p.userId === String(userId)));
-}
-
-export function deleteSocialPostById(postId) {
-  if (!postId) return false;
-  const posts = readJson(postsFile, []);
-  const updated = (posts || []).filter((p) => p && String(p.id) !== String(postId));
-  writeJson(postsFile, updated);
-  return true;
-}
-
-export function updateSocialPostById(postId, patch = {}) {
-  if (!postId) return null;
-  const posts = readJson(postsFile, []);
-  let changed = null;
-  const updated = (posts || []).map((p) => {
-    if (!p || String(p.id) !== String(postId)) return p;
-    const next = { ...p, ...patch };
-    changed = next;
-    return next;
-  });
-  writeJson(postsFile, updated);
-  return changed;
-}
-
-export function createSocialPost(post) {
-  const posts = readJson(postsFile, []);
-  let imagePath = null;
-
-  if (post.imageFile) {
-    const fileName = `${Date.now()}-${post.imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const destination = resolve(uploadsDir, fileName);
-    copyFileSync(post.imageFile.path, destination);
-    imagePath = `/api/social/uploads/${fileName}`;
-  }
-
-  const nextPost = {
-    id: post.id || `post-${Date.now()}`,
-    userId: post.userId || 'guest',
+function normalizePost(post = {}) {
+  return {
+    id: post.id || randomUUID(),
+    userId: String(post.userId || 'guest'),
     username: post.username || 'MiitVerse member',
     content: post.content || '',
-    image: post.image || imagePath || null,
-    createdAt: post.createdAt || new Date().toISOString(),
+    image: post.image || null,
+    createdAt: post.createdAt || new Date(),
     likes: Number(post.likes || 0),
     likedBy: Array.isArray(post.likedBy) ? post.likedBy : [],
     comments: Array.isArray(post.comments) ? post.comments : [],
     reposts: Number(post.reposts || 0),
     visibility: post.visibility || 'public',
-  };
-
-  const nextPosts = [nextPost, ...posts];
-  writeJson(postsFile, nextPosts);
-  return nextPost;
+  }
 }
 
-export function toggleSocialPostLike(postId, account) {
-  if (!postId || !account?.id) return null
-
-  const posts = readJson(postsFile, [])
-  let result = null
-  const updated = posts.map((post) => {
-    if (!post || String(post.id) !== String(postId)) return post
-
-    const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
-    const existingIndex = likedBy.findIndex((entry) => String(entry?.userId) === String(account.id))
-    const nextLikedBy = existingIndex >= 0
-      ? likedBy.filter((_, index) => index !== existingIndex)
-      : [...likedBy, { userId: String(account.id), username: account.username || 'MiitVerse member' }]
-    const legacyLikes = Math.max(Number(post.likes || 0), likedBy.length)
-    const nextPost = {
-      ...post,
-      likedBy: nextLikedBy,
-      likes: existingIndex >= 0 ? Math.max(0, legacyLikes - 1) : legacyLikes + 1,
-    }
-
-    result = { post: nextPost, reacted: existingIndex < 0 }
-    return nextPost
+export function getVisiblePosts(posts = [], currentUserId = null, following = []) {
+  const followingIds = new Set((following || []).map((entry) => entry?.id ?? entry))
+  return (posts || []).filter((post) => {
+    if (!post) return false
+    if (post.visibility === 'public') return true
+    if (!currentUserId) return false
+    if (post.userId === currentUserId) return true
+    return post.visibility === 'followers' && followingIds.has(post.userId)
   })
-
-  if (!result) return null
-  writeJson(postsFile, updated)
-  return result
 }
 
-export function getSocialFollows(userId) {
-  const follows = readJson(followsFile, {});
-  return follows[userId] || [];
+export function getPostReactionCount(post = {}) {
+  const likes = Math.max(Number(post.likes || 0), Array.isArray(post.likedBy) ? post.likedBy.length : 0)
+  const comments = Array.isArray(post.comments) ? post.comments.length : Number(post.comments || 0)
+  return Math.max(0, likes + comments + Number(post.reposts ?? post.shares ?? 0))
 }
 
-export function saveSocialFollows(userId, following) {
-  const follows = readJson(followsFile, {});
-  follows[userId] = following;
-  writeJson(followsFile, follows);
-  return following;
+export function isPagePost(post = {}, pagePostUserIds = []) {
+  if (!post) return false
+  if (post.source === 'page' || post.postType === 'page') return true
+  const pageIds = pagePostUserIds instanceof Set ? pagePostUserIds : new Set(pagePostUserIds || [])
+  return pageIds.has(post.userId) || pageIds.has(String(post.userId))
+}
+
+export function shuffleUserPostsByReactions(posts = [], random = Math.random) {
+  return [...(posts || [])]
+    .map((post, index) => ({
+      post,
+      index,
+      priority: Math.max(Number.EPSILON, Math.min(1 - Number.EPSILON, random())) ** (1 / (Math.log1p(getPostReactionCount(post)) + 1)),
+    }))
+    .sort((left, right) => right.priority - left.priority || left.index - right.index)
+    .map((entry) => entry.post)
+}
+
+export function applyUserPostWeightedShuffle(posts = [], options = {}) {
+  const pagePostUserIds = options.pagePostUserIds || options.pageUserIds || []
+  const userPosts = (posts || []).filter((post) => !isPagePost(post, pagePostUserIds))
+  const shuffledUserPosts = shuffleUserPostsByReactions(userPosts, options.random || Math.random)
+  let nextUserIndex = 0
+  return (posts || []).map((post) => isPagePost(post, pagePostUserIds) ? post : shuffledUserPosts[nextUserIndex++])
+}
+
+export function toggleFollowRelationship(currentFollowing = [], targetUser = null) {
+  if (!targetUser) return currentFollowing
+  const targetId = targetUser.id ?? targetUser.userId ?? targetUser.username
+  if (!targetId) return currentFollowing
+  const exists = currentFollowing.some((entry) => (entry?.id ?? entry?.userId ?? entry?.username) === targetId)
+  return exists
+    ? currentFollowing.filter((entry) => (entry?.id ?? entry?.userId ?? entry?.username) !== targetId)
+    : [...currentFollowing, { id: targetId, username: targetUser.username || 'User' }]
+}
+
+export async function listSocialPosts(currentUserId = null, following = [], options = {}) {
+  requireDatabase()
+  const posts = await SocialPostModel.find({}).sort({ createdAt: -1 }).lean()
+  return applyUserPostWeightedShuffle(getVisiblePosts(posts, currentUserId, following), options)
+}
+
+export async function listAllSocialPosts() {
+  requireDatabase()
+  return SocialPostModel.find({}).sort({ createdAt: -1 }).lean()
+}
+
+export async function listSocialPostsByUserId(userId) {
+  requireDatabase()
+  return SocialPostModel.find({ userId: String(userId) }).sort({ createdAt: -1 }).lean()
+}
+
+export async function createSocialPost(post) {
+  requireDatabase()
+  return SocialPostModel.create(normalizePost(post)).then((document) => document.toObject())
+}
+
+export async function upsertSocialPost(post) {
+  requireDatabase()
+  const normalized = normalizePost(post)
+  return SocialPostModel.findOneAndUpdate(
+    { id: normalized.id },
+    { $set: normalized },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  ).lean()
+}
+
+export async function deleteSocialPostById(postId) {
+  requireDatabase()
+  const result = await SocialPostModel.deleteOne({ id: String(postId) })
+  return result.deletedCount > 0
+}
+
+export async function updateSocialPostById(postId, patch = {}) {
+  requireDatabase()
+  return SocialPostModel.findOneAndUpdate({ id: String(postId) }, { $set: patch }, { new: true }).lean()
+}
+
+export async function toggleSocialPostLike(postId, account) {
+  requireDatabase()
+  if (!account?.id) return null
+  const post = await SocialPostModel.findOne({ id: String(postId) }).lean()
+  if (!post) return null
+  const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+  const existing = likedBy.some((entry) => String(entry?.userId) === String(account.id))
+  const nextLikedBy = existing
+    ? likedBy.filter((entry) => String(entry?.userId) !== String(account.id))
+    : [...likedBy, { userId: String(account.id), username: account.username || 'MiitVerse member' }]
+  const nextPost = await SocialPostModel.findOneAndUpdate(
+    { id: String(postId) },
+    { $set: { likedBy: nextLikedBy, likes: Math.max(0, Number(post.likes || 0) + (existing ? -1 : 1)) } },
+    { new: true }
+  ).lean()
+  return { post: nextPost, reacted: !existing }
+}
+
+export async function getSocialFollows(userId) {
+  requireDatabase()
+  const record = await SocialFollowModel.findOne({ userId: String(userId) }).lean()
+  return record?.following || []
+}
+
+export async function saveSocialFollows(userId, following) {
+  requireDatabase()
+  const record = await SocialFollowModel.findOneAndUpdate(
+    { userId: String(userId) },
+    { $set: { following: Array.isArray(following) ? following : [] } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  ).lean()
+  return record.following
+}
+
+export async function saveSocialAsset({ fileName, contentType, data }) {
+  requireDatabase()
+  if (!Buffer.isBuffer(data) || data.length === 0) throw new Error('Upload data is required')
+  if (data.length > 15 * 1024 * 1024) throw new Error('Uploads must be 15 MB or smaller')
+  await SocialAssetModel.findOneAndUpdate(
+    { fileName },
+    { $set: { contentType: contentType || 'application/octet-stream', data } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  )
+  return `/api/social/uploads/${encodeURIComponent(fileName)}`
+}
+
+export async function getSocialAsset(fileName) {
+  requireDatabase()
+  return SocialAssetModel.findOne({ fileName }).lean()
 }
