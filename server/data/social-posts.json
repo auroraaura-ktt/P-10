@@ -6,13 +6,8 @@
     "content": "",
     "image": "/api/social/uploads/1786205533334-Screenshot_2026-07-18_113659.png",
     "createdAt": "2026-08-08T16:12:13.341Z",
-    "likes": 1,
-    "likedBy": [
-      {
-        "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
-        "username": "Kyaw Thein Tun"
-      }
-    ],
+    "likes": 0,
+    "likedBy": [],
     "comments": [],
     "reposts": 0,
     "visibility": "public"
