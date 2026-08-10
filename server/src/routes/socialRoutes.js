@@ -17,6 +17,7 @@ import {
   listSocialPostsByUserId,
   toggleSocialPostLike,
 } from '../utils/socialStore.js';
+import { listPageRecords } from '../utils/pagePersistence.js';
 
 const router = Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -54,7 +55,7 @@ router.get('/uploads/:fileName', (req, res) => {
   res.send(fileBuffer);
 });
 
-router.get('/posts', authMiddleware, (req, res) => {
+router.get('/posts', authMiddleware, async (req, res) => {
   const { userId } = req.query || {}
   if (userId) {
     const posts = listSocialPostsByUserId(userId)
@@ -62,7 +63,16 @@ router.get('/posts', authMiddleware, (req, res) => {
   }
 
   const following = getSocialFollows(req.user.id);
-  const posts = listSocialPosts(req.user.id, following);
+  let pagePostUserIds = []
+
+  try {
+    const pages = await listPageRecords()
+    pagePostUserIds = (pages || []).map((page) => page.ownerId || page.id).filter(Boolean)
+  } catch (error) {
+    console.error('Failed to load page records for feed ordering:', error.message)
+  }
+
+  const posts = listSocialPosts(req.user.id, following, { pagePostUserIds });
   res.json({ posts });
 });
 

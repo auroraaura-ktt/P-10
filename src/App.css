@@ -63,7 +63,15 @@ html, body {
   height: auto;
   min-height: 100%;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 :root {
   --navy: #081C4D;
   --navy2: #143A86;

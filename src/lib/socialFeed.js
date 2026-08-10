@@ -1,7 +1,63 @@
-export function getVisiblePosts(posts = [], currentUserId = null, following = []) {
+export function getPostReactionCount(post = {}) {
+  const likes = Math.max(Number(post.likes || 0), Array.isArray(post.likedBy) ? post.likedBy.length : 0);
+  const comments = Array.isArray(post.comments) ? post.comments.length : Number(post.comments || 0);
+  const reposts = Number(post.reposts ?? post.shares ?? 0);
+
+  return Math.max(0, likes + comments + reposts);
+}
+
+export function isPagePost(post = {}, pagePostUserIds = []) {
+  if (!post) return false;
+  if (post.source === 'page' || post.postType === 'page') return true;
+
+  const pageIds = pagePostUserIds instanceof Set ? pagePostUserIds : new Set(pagePostUserIds || []);
+  return pageIds.has(post.userId) || pageIds.has(String(post.userId));
+}
+
+export function shuffleUserPostsByReactions(posts = [], random = Math.random) {
+  return [...(posts || [])]
+    .map((post, index) => {
+      const reactionWeight = Math.log1p(getPostReactionCount(post)) + 1;
+      const randomValue = Math.max(Number.EPSILON, Math.min(1 - Number.EPSILON, random()));
+      return {
+        post,
+        index,
+        priority: randomValue ** (1 / reactionWeight),
+      };
+    })
+    .sort((left, right) => {
+      if (right.priority !== left.priority) return right.priority - left.priority;
+      return left.index - right.index;
+    })
+    .map((entry) => entry.post);
+}
+
+export function applyUserPostWeightedShuffle(posts = [], options = {}) {
+  const pagePostUserIds = options.pagePostUserIds || options.pageUserIds || [];
+  const random = options.random || Math.random;
+  const userPosts = [];
+
+  for (const post of posts || []) {
+    if (!isPagePost(post, pagePostUserIds)) {
+      userPosts.push(post);
+    }
+  }
+
+  const shuffledUserPosts = shuffleUserPostsByReactions(userPosts, random);
+  let nextUserIndex = 0;
+
+  return (posts || []).map((post) => {
+    if (isPagePost(post, pagePostUserIds)) return post;
+    const nextPost = shuffledUserPosts[nextUserIndex];
+    nextUserIndex += 1;
+    return nextPost;
+  });
+}
+
+export function getVisiblePosts(posts = [], currentUserId = null, following = [], options = {}) {
   const followingIds = new Set((following || []).map((entry) => entry?.id ?? entry));
 
-  return (posts || []).filter((post) => {
+  const visiblePosts = (posts || []).filter((post) => {
     if (!post) return false;
 
     if (post.visibility === 'public') return true;
@@ -11,6 +67,8 @@ export function getVisiblePosts(posts = [], currentUserId = null, following = []
     if (post.visibility === 'private') return false;
     return true;
   });
+
+  return applyUserPostWeightedShuffle(visiblePosts, options);
 }
 
 export function shouldPersistSocialPost({ user, ready, authToken }) {

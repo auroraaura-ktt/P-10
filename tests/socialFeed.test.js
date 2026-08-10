@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getVisiblePosts, shouldPersistSocialPost, toggleFollowRelationship } from '../src/lib/socialFeed.js';
+import {
+  applyUserPostWeightedShuffle,
+  getVisiblePosts,
+  shouldPersistSocialPost,
+  shuffleUserPostsByReactions,
+  toggleFollowRelationship,
+} from '../src/lib/socialFeed.js';
 
 test('getVisiblePosts keeps public posts visible to everyone', () => {
   const posts = [
@@ -10,7 +16,7 @@ test('getVisiblePosts keeps public posts visible to everyone', () => {
     { id: 3, userId: 'friend', visibility: 'followers' },
   ];
 
-  const visible = getVisiblePosts(posts, 'me', ['friend']);
+  const visible = getVisiblePosts(posts, 'me', ['friend'], { random: () => 0.5 });
 
   assert.deepEqual(visible.map((post) => post.id), [1, 3]);
 });
@@ -45,4 +51,66 @@ test('shouldPersistSocialPost stays local-only for unauthenticated users', () =>
   });
 
   assert.equal(result, false);
+});
+
+test('shuffleUserPostsByReactions gives higher-reaction user posts more priority with equal randomness', () => {
+  const posts = [
+    { id: 'low', likes: 5 },
+    { id: 'high', likes: 100 },
+    { id: 'middle', likes: 50 },
+  ];
+
+  const shuffled = shuffleUserPostsByReactions(posts, () => 0.5);
+
+  assert.deepEqual(shuffled.map((post) => post.id), ['high', 'middle', 'low']);
+});
+
+test('shuffleUserPostsByReactions still randomizes user posts', () => {
+  const posts = [
+    { id: 'first', likes: 10 },
+    { id: 'second', likes: 10 },
+    { id: 'third', likes: 10 },
+  ];
+  const randomValues = [0.1, 0.9, 0.8];
+
+  const shuffled = shuffleUserPostsByReactions(posts, () => randomValues.shift());
+
+  assert.deepEqual(shuffled.map((post) => post.id), ['second', 'third', 'first']);
+});
+
+test('applyUserPostWeightedShuffle preserves reserved page slots while shuffling user posts', () => {
+  const posts = [
+    { id: 'user-low', userId: 'user-1', likes: 1 },
+    { id: 'page-new', userId: 'page-1', likes: 0 },
+    { id: 'user-high', userId: 'user-2', likes: 100 },
+    { id: 'page-old', userId: 'page-2', likes: 0 },
+    { id: 'user-middle', userId: 'user-3', likes: 20 },
+  ];
+
+  const shuffled = applyUserPostWeightedShuffle(posts, {
+    pagePostUserIds: ['page-1', 'page-2'],
+    random: () => 0.5,
+  });
+
+  assert.deepEqual(shuffled.map((post) => post.id), [
+    'user-high',
+    'page-new',
+    'user-middle',
+    'page-old',
+    'user-low',
+  ]);
+});
+
+test('getVisiblePosts preserves page posts when source is page and randomization is applied', () => {
+  const posts = [
+    { id: 'user-low', userId: 'user-1', likes: 1, visibility: 'public' },
+    { id: 'page-new', userId: 'page-1', likes: 0, visibility: 'public', source: 'page' },
+    { id: 'user-high', userId: 'user-2', likes: 100, visibility: 'public' },
+  ];
+
+  const visible = getVisiblePosts(posts, 'me', [], {
+    random: () => 0.5,
+  });
+
+  assert.deepEqual(visible.map((post) => post.id), ['user-high', 'page-new', 'user-low']);
 });

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { FaCamera, FaNewspaper, FaCode, FaVideo, FaPaperPlane } from "react-icons/fa";
+import { FaCamera, FaNewspaper, FaCode, FaVideo, FaPaperPlane, FaSync } from "react-icons/fa";
 import { useAuth } from "../context/useAuth";
 
 const MAX_POST_LENGTH = 280;
 
-export default function CreatePost({ onAddPost }) {
+export default function CreatePost({ onAddPost, onRefresh, isRefreshing }) {
   const { user, token } = useAuth();
   const [videoOpen, setVideoOpen] = useState(false);
   const [streamError, setStreamError] = useState(null);
@@ -177,9 +177,9 @@ export default function CreatePost({ onAddPost }) {
         <span>
           <FaCode /> Code
         </span>
-        <span className="video-trigger" onClick={handleOpenVideo}>
-          <FaVideo /> Video
-        </span>
+        <button type="button" className="video-trigger" onClick={onRefresh}>
+          <FaSync /> {isRefreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
         <button type="submit">
           <FaPaperPlane /> Post
         </button>

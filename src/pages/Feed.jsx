@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from '../context/useAuth'
 import BottomNav from "../components/BottomNav"
 import LeftSidebar from "../components/LeftSidebar"
@@ -41,54 +41,58 @@ export default function Feed() {
   const [darkMode, setDarkMode] = useState(false)
   const [posts, setPosts] = useState([])
   const [following, setFollowing] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadFeedData = useCallback(async () => {
+    setIsLoading(true)
+
+    try {
+      const savedFollowing = localStorage.getItem("feed-following")
+      if (savedFollowing) {
+        setFollowing(JSON.parse(savedFollowing))
+      }
+
+      if (!ready) {
+        return
+      }
+
+      if (!user?.id) {
+        setPosts([
+          {
+            id: "welcome-post",
+            userId: "system",
+            username: "MiitVerse",
+            profilePicture: null,
+            content: "Welcome to the new feed. Start a conversation with your community.",
+            image: null,
+            createdAt: new Date().toISOString(),
+            likes: 0,
+            comments: [],
+            reposts: 0,
+            visibility: "public",
+          },
+        ])
+        return
+      }
+
+      const [{ posts: serverPosts }, { following: serverFollowing }] = await Promise.all([
+        apiRequest('/social/posts'),
+        apiRequest('/social/follows'),
+      ])
+
+      setPosts(serverPosts || [])
+      setFollowing(serverFollowing || [])
+      localStorage.setItem("feed-following", JSON.stringify(serverFollowing || []))
+    } catch (error) {
+      console.error("Failed to load feed posts:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [ready, user?.id])
 
   useEffect(() => {
-    async function loadFeedData() {
-      try {
-        const savedFollowing = localStorage.getItem("feed-following")
-        if (savedFollowing) {
-          setFollowing(JSON.parse(savedFollowing))
-        }
-
-        if (!ready) {
-          return
-        }
-
-        if (!user?.id) {
-          setPosts([
-            {
-              id: "welcome-post",
-              userId: "system",
-              username: "MiitVerse",
-              profilePicture: null,
-              content: "Welcome to the new feed. Start a conversation with your community.",
-              image: null,
-              createdAt: new Date().toISOString(),
-              likes: 0,
-              comments: [],
-              reposts: 0,
-              visibility: "public",
-            },
-          ])
-          return
-        }
-
-        const [{ posts: serverPosts }, { following: serverFollowing }] = await Promise.all([
-          apiRequest('/social/posts'),
-          apiRequest('/social/follows'),
-        ])
-
-        setPosts(serverPosts || [])
-        setFollowing(serverFollowing || [])
-        localStorage.setItem("feed-following", JSON.stringify(serverFollowing || []))
-      } catch (error) {
-        console.error("Failed to load feed posts:", error)
-        setPosts([])
-      }
-    }
-
     loadFeedData()
-  }, [ready, user?.id])
+  }, [loadFeedData])
 
   const handleAddPost = async (newPost) => {
     const storedAuth = typeof window !== 'undefined' ? window.localStorage.getItem('miitverse-auth') : null
@@ -185,7 +189,10 @@ export default function Feed() {
     }
   }
 
-  const visiblePosts = getVisiblePosts(posts, user?.id ?? null, following)
+  const visiblePosts = useMemo(
+    () => getVisiblePosts(posts, user?.id ?? null, following),
+    [posts, user?.id, following]
+  )
 
   return (
     <div className={`feed-layout ${darkMode ? "dark" : ""}`}>
@@ -204,8 +211,8 @@ export default function Feed() {
         </section>
 
         <StoriesBar />
-        <CreatePost onAddPost={handleAddPost} />
-        <PostList posts={visiblePosts} />
+        <CreatePost onAddPost={handleAddPost} onRefresh={loadFeedData} isRefreshing={isLoading} />
+        <PostList posts={visiblePosts} isLoading={isLoading} />
       </main>
 
       <RightSidebar following={following} onFollowToggle={handleFollowToggle} />

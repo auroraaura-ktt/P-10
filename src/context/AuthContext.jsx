@@ -116,7 +116,11 @@ export function AuthProvider({ children }) {
         return data
       },
       logout: () => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('miitverse-auth')
+        }
         setAuth(null)
+        setReady(true)
       },
     }
   }, [auth, ready])

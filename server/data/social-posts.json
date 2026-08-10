@@ -1,5 +1,23 @@
 [
   {
+    "id": "post-1786377439760",
+    "userId": "d0535862-4f12-490d-aa60-f83f244464ac",
+    "username": "admin",
+    "content": "Hi Students, I love MIIT",
+    "image": null,
+    "createdAt": "2026-08-10T15:57:19.760Z",
+    "likes": 1,
+    "likedBy": [
+      {
+        "userId": "40f6a193-5632-4db5-993b-a069552387a4",
+        "username": "Shine Wunna Tun"
+      }
+    ],
+    "comments": [],
+    "reposts": 0,
+    "visibility": "public"
+  },
+  {
     "id": "post-1786205533341",
     "userId": "c6e379a8-e35f-404d-b850-7e4b4bca8e40",
     "username": "Kyaw Lin",
@@ -19,11 +37,15 @@
     "content": "This is Test Photo!!!",
     "image": "/api/social/uploads/1786205433512-ChatGPT_Image_Jun_10__2026__10_49_32_PM.png",
     "createdAt": "2026-08-08T16:10:33.516Z",
-    "likes": 1,
+    "likes": 2,
     "likedBy": [
       {
         "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
         "username": "Kyaw Thein Tun"
+      },
+      {
+        "userId": "40f6a193-5632-4db5-993b-a069552387a4",
+        "username": "Shine Wunna Tun"
       }
     ],
     "comments": [],
@@ -55,7 +77,7 @@
     "content": "",
     "image": "/api/social/uploads/1786204469927-Screenshot_2026-08-08_004208.png",
     "createdAt": "2026-08-08T15:54:29.931Z",
-    "likes": 1,
+    "likes": 2,
     "comments": [],
     "reposts": 0,
     "visibility": "public",
@@ -63,6 +85,10 @@
       {
         "userId": "a32a16f2-7770-4bcf-b900-523298e01a68",
         "username": "Kyaw Thein Tun"
+      },
+      {
+        "userId": "40f6a193-5632-4db5-993b-a069552387a4",
+        "username": "Shine Wunna Tun"
       }
     ]
   },
@@ -247,10 +273,16 @@
     "content": "hi",
     "image": null,
     "createdAt": "2026-08-08T05:51:51.770Z",
-    "likes": 0,
+    "likes": 1,
     "comments": [],
     "reposts": 0,
-    "visibility": "public"
+    "visibility": "public",
+    "likedBy": [
+      {
+        "userId": "40f6a193-5632-4db5-993b-a069552387a4",
+        "username": "Shine Wunna Tun"
+      }
+    ]
   },
   {
     "id": "post-1786167005662",
@@ -259,10 +291,16 @@
     "content": "hello from api",
     "image": null,
     "createdAt": "2026-08-08T05:30:05.662Z",
-    "likes": 0,
+    "likes": 1,
     "comments": [],
     "reposts": 0,
-    "visibility": "public"
+    "visibility": "public",
+    "likedBy": [
+      {
+        "userId": "40f6a193-5632-4db5-993b-a069552387a4",
+        "username": "Shine Wunna Tun"
+      }
+    ]
   },
   {
     "id": "post-1786166607546",
