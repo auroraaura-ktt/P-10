@@ -1,4 +1,6 @@
 import sgMail from '@sendgrid/mail'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { env } from '../config/env.js'
 
 // Initialize SendGrid
@@ -72,29 +74,61 @@ export async function sendInvitationEmail(email) {
   }
 
   const appUrl = env.appUrl.replace(/\/+$/, '')
+  const logoPath = fileURLToPath(new URL('../../../public/miitLogo.png', import.meta.url))
   const msg = {
     to: email,
     from: `${env.sendgridFromName} <${env.sendgridFromEmail}>`,
     replyTo: `${env.sendgridFromName} <${env.sendgridFromEmail}>`,
-    subject: 'You’re invited to MiitVerse',
-    text: `You’re invited to join MiitVerse, the official social hub of MIIT. Open ${appUrl} to get started.`,
+    subject: "You're invited to MiitVerse",
+    text: `You've been invited to MiitVerse, the official social hub of MIIT. Join the community at ${appUrl}.`,
     html: `
-      <div style="margin:0;padding:32px 16px;background:#eef3fb;font-family:Arial,sans-serif;color:#17213a">
-        <div style="max-width:560px;margin:0 auto;overflow:hidden;border-radius:22px;background:#ffffff;box-shadow:0 16px 40px rgba(17,50,109,.15)">
-          <div style="padding:38px 38px 30px;background:linear-gradient(135deg,#071c53,#2459ae);color:#fff;text-align:center">
-            <div style="display:inline-block;padding:7px 12px;border:1px solid rgba(255,255,255,.35);border-radius:999px;font-size:12px;font-weight:700;letter-spacing:1px">MIITVERSE</div>
-            <h1 style="margin:18px 0 8px;font-size:30px;line-height:1.2">You’re invited</h1>
-            <p style="margin:0;color:#dce8ff;font-size:16px">Your MIIT community is waiting for you.</p>
-          </div>
-          <div style="padding:34px 38px 40px;text-align:center">
-            <p style="margin:0 0 14px;font-size:17px;line-height:1.6">Connect with classmates, discover campus updates, and share what matters at MIIT.</p>
-            <p style="margin:0 0 28px;color:#64748b;font-size:14px;line-height:1.5">Create your account to join the official MiitVerse social hub.</p>
-            <a href="${appUrl}" style="display:inline-block;padding:14px 26px;border-radius:10px;background:#f4b400;color:#10275c;font-size:16px;font-weight:700;text-decoration:none">Join MiitVerse</a>
-          </div>
-          <div style="padding:18px 28px;background:#f7f9fd;color:#71809a;font-size:12px;text-align:center">Official Social Hub of MIIT</div>
-        </div>
+      <div style="margin:0;padding:48px 16px;background:#f6f1e8;font-family:Arial,Helvetica,sans-serif;color:#17213a">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;border-collapse:separate;border-spacing:0;background:#fffdf8;border:1px solid #eadfca;border-radius:18px;box-shadow:0 16px 38px rgba(33,43,66,.12)">
+          <tr>
+            <td style="padding:0;background:#081c4d;border-radius:18px 18px 0 0">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">
+                <tr>
+                  <td width="116" valign="middle" style="padding:30px 0 30px 34px">
+                    <div style="width:78px;height:78px;background:#ffffff;border:3px solid #f5b62d;border-radius:50%;text-align:center;box-shadow:0 5px 14px rgba(0,0,0,.18)"><img src="cid:miitverse-logo" width="66" height="66" alt="MIIT logo" style="display:inline-block;width:66px;height:66px;margin-top:3px;border:0;outline:none"></div>
+                  </td>
+                  <td valign="middle" style="padding:30px 34px 30px 20px">
+                    <p style="margin:0 0 8px;color:#f5b62d;font-size:10px;font-weight:700;letter-spacing:1.3px;line-height:1;text-transform:uppercase">A community invitation</p>
+                    <p style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:-.7px;line-height:1.16">Make MIIT feel closer.</p>
+                    <p style="margin:10px 0 0;color:#cbd8f5;font-size:13px;line-height:1.45">The official space for campus life.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px 36px 44px">
+              <h1 style="margin:0 0 16px;color:#081c4d;font-size:31px;font-weight:700;letter-spacing:-.7px;line-height:1.2">You've been invited to MiitVerse.</h1>
+              <p style="margin:0 0 25px;color:#667085;font-size:16px;line-height:1.65">A place for the MIIT community to connect, discover campus news, and share the moments that matter.</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;border-collapse:separate;border-spacing:0;background:#fff7e4;border:1px solid #f1dfb4;border-radius:10px">
+                <tr><td colspan="3" style="padding:17px 18px 11px;color:#081c4d;font-size:12px;font-weight:700;letter-spacing:.8px;line-height:1;text-transform:uppercase">Inside MiitVerse</td></tr>
+                <tr>
+                  <td width="33.33%" valign="top" style="padding:7px 10px 18px 18px;color:#667085;font-size:12px;line-height:1.5"><span style="display:block;margin-bottom:6px;color:#c78a12;font-size:18px;font-weight:700;line-height:1">01</span><strong style="color:#081c4d;font-size:13px">Connect</strong><br>Find your people.</td>
+                  <td width="33.33%" valign="top" style="padding:7px 10px 18px;color:#667085;font-size:12px;line-height:1.5"><span style="display:block;margin-bottom:6px;color:#c78a12;font-size:18px;font-weight:700;line-height:1">02</span><strong style="color:#081c4d;font-size:13px">Discover</strong><br>Keep up with MIIT.</td>
+                  <td width="33.33%" valign="top" style="padding:7px 18px 18px 10px;color:#667085;font-size:12px;line-height:1.5"><span style="display:block;margin-bottom:6px;color:#c78a12;font-size:18px;font-weight:700;line-height:1">03</span><strong style="color:#081c4d;font-size:13px">Share</strong><br>Make your voice heard.</td>
+                </tr>
+              </table>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td style="border-radius:8px;background:#f5b62d"><a href="${appUrl}" style="display:inline-block;padding:14px 22px;border-radius:8px;color:#081c4d;font-size:15px;font-weight:700;line-height:1;text-decoration:none">Accept invitation&nbsp;&nbsp;&rarr;</a></td></tr></table>
+              <p style="margin:28px 0 0;color:#8a96a9;font-size:12px;line-height:1.6">If you were not expecting this invitation, you can safely ignore this email.</p>
+            </td>
+          </tr>
+          <tr><td style="height:5px;background:#f5b62d;border-radius:0 0 16px 16px;font-size:0;line-height:0">&nbsp;</td></tr>
+        </table>
       </div>
     `,
+    attachments: [
+      {
+        content: readFileSync(logoPath).toString('base64'),
+        filename: 'miitverse-logo.png',
+        type: 'image/png',
+        disposition: 'inline',
+        content_id: 'miitverse-logo',
+      },
+    ],
   }
 
   try {
